@@ -1,12 +1,22 @@
 # accounts/serializers.py
-from django.contrib.auth.models import User
-from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import OTP
+from .models import OTP, User
 
-class RegisterSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for User model - used for GET operations
+    """
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location')
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating a new user
+    """
     email = serializers.EmailField(
         required=True,
         validators=[UniqueValidator(queryset=User.objects.all())]
@@ -20,10 +30,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name')
+        fields = ('id', 'username', 'password', 'password2', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location')
         extra_kwargs = {
-            'first_name': {'required': True},
-            'last_name': {'required': True}
+            'username': {'required': True},
+            'email': {'required': True},
         }
 
     def validate(self, attrs):
@@ -32,15 +42,55 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        validated_data.pop('password2')
         user = User.objects.create(
             username=validated_data['username'],
             email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name']
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            image=validated_data.get('image', None),
+            date_of_birth=validated_data.get('date_of_birth', None),
+            location=validated_data.get('location', None)
         )
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating a user
+    """
+    email = serializers.EmailField(required=False)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location')
+        extra_kwargs = {
+            'username': {'required': False},
+        }
+    
+    def validate_email(self, value):
+        user = self.context['request'].user
+        if User.objects.exclude(pk=user.pk).filter(email=value).exists():
+            raise serializers.ValidationError("This email is already in use.")
+        return value
+        
+    def validate_username(self, value):
+        user = self.context['request'].user
+        if User.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError("This username is already in use.")
+        return value
+        
+    def update(self, instance, validated_data):
+        instance.username = validated_data.get('username', instance.username)
+        instance.email = validated_data.get('email', instance.email)
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.image = validated_data.get('image', instance.image)
+        instance.date_of_birth = validated_data.get('date_of_birth', instance.date_of_birth)
+        instance.location = validated_data.get('location', instance.location)
+        instance.save()
+        return instance
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=255)
@@ -82,8 +132,3 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name')

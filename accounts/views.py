@@ -1,34 +1,48 @@
 # accounts/views.py
 import random
 import string
-from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.utils import timezone
-from rest_framework import status, permissions
+from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import OTP
+from .models import OTP, User
 from .serializers import (
-    RegisterSerializer, 
-    LoginSerializer, 
-    PasswordResetRequestSerializer, 
+    UserSerializer,
+    UserCreateSerializer,
+    UserUpdateSerializer,
+    LoginSerializer,
+    PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
-    UserSerializer
 )
 
-class RegisterView(APIView):
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': UserSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for User CRUD operations
+    """
+    queryset = User.objects.all()
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return UserUpdateSerializer
+        return UserSerializer
+    
+    def get_permissions(self):
+        if self.action == 'create':
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+    
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        user.is_active = False
+        user.save()
+        return Response({"detail": "User successfully deactivated."}, status=status.HTTP_204_NO_CONTENT)
 
 class LoginView(APIView):
     def post(self, request):

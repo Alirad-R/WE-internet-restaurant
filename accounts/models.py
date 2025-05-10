@@ -1,8 +1,21 @@
 # accounts/models.py
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 import uuid
+
+class User(AbstractUser):
+    """
+    Custom User model with additional fields
+    """
+    # Required fields (username, password, email are already in AbstractUser)
+    # Additional fields
+    image = models.ImageField(upload_to='user_images/', blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    
+    def __str__(self):
+        return self.username
 
 class OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

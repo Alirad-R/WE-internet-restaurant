@@ -65,8 +65,12 @@ WSGI_APPLICATION = 'restaurant.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'cafe_db',
+        'USER': 'cafedev',
+        'PASSWORD': 'Aali1384',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
