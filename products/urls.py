@@ -1,8 +1,11 @@
 from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet, CategoryViewSet
+from .views import ProductViewSet, CategoryViewSet, AttributeViewSet, AttributeValueViewSet, TagViewSet
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet)
 router.register(r'categories', CategoryViewSet)
+router.register(r'attributes', AttributeViewSet)
+router.register(r'attribute_values', AttributeValueViewSet)
+router.register(r'tags', TagViewSet)
 
 urlpatterns = router.urls
