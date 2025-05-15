@@ -1,13 +1,19 @@
 from django.shortcuts import render
 from rest_framework import viewsets
-from .models import Product, Category, Attribute, AttributeValue, Tag
-from .serializers import ProductSerializer, CategorySerializer, AttributeSerializer, AttributeValueSerializer, TagSerializer
+from .models import Product, Category, Attribute, AttributeValue, Tag, ProductImage
+from .serializers import ProductSerializer, CategorySerializer, AttributeSerializer, AttributeValueSerializer, TagSerializer, ProductImageSerializer
 # Create your views here.
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = []
+    
+class ProductImageViewSet(viewsets.ModelViewSet):
+    queryset = ProductImage.objects.all()
+    serializer_class = ProductImageSerializer
+    permission_classes = []
+
     
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

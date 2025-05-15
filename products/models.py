@@ -19,12 +19,20 @@ class Product(models.Model):
     price = models.IntegerField()
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='products/images', blank=True, null=True)
+    # image = models.ImageField(upload_to='products/images', blank=True, null=True)
     stock = models.BooleanField(default=True)
     tags = models.ManyToManyField(Tag, blank=True)
     
     def __str__(self):
         return self.name
+    
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='products/gallery')
+
+    def __str__(self):
+        return f"Image for {self.product.name}"
+
     
     
 class Attribute(models.Model):
