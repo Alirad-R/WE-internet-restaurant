@@ -3,7 +3,44 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import OTP, User
+from .models import OTP, User, CustomerProfile
+
+class CustomerProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CustomerProfile model
+    """
+    class Meta:
+        model = CustomerProfile
+        fields = ('id', 'phone_number', 'address', 'city', 'state', 'country', 
+                 'postal_code', 'preferences', 'allergies', 'dietary_restrictions',
+                 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
+
+class CustomerProfileUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating customer profile
+    """
+    class Meta:
+        model = CustomerProfile
+        fields = ('phone_number', 'address', 'city', 'state', 'country', 
+                 'postal_code', 'preferences', 'allergies', 'dietary_restrictions')
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+class UserWithProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for User model with nested CustomerProfile
+    """
+    customer_profile = CustomerProfileSerializer()
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 
+                 'date_of_birth', 'location', 'customer_profile')
 
 class UserSerializer(serializers.ModelSerializer):
     """

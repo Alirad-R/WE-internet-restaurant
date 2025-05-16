@@ -7,11 +7,13 @@ from .views import (
     LoginView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
-    UserProfileView
+    UserProfileView,
+    CustomerProfileViewSet
 )
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
+router.register(r'customer-profiles', CustomerProfileViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
