@@ -1,24 +1,42 @@
-# products/serializers.py
 from rest_framework import serializers
-from .models import Product, Category
+from .models import Product, Category, Attribute, AttributeValue, Tag, ProductImage
 
-# These are placeholder serializers that will be implemented when the product models are defined
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['id', 'name']
 
+class AttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attribute
+        fields = ['id', 'name']
+
+class AttributeValueSerializer(serializers.ModelSerializer):
+    attribute = AttributeSerializer()
+    class Meta:
+        model = AttributeValue
+        fields = ['id', 'attribute', 'value']
 class CategorySerializer(serializers.ModelSerializer):
-    """
-    Serializer for product categories
-    """
+    image = serializers.ImageField(use_url=True)
     class Meta:
         model = Category
         fields = '__all__'
+        
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image']
 
+        
 class ProductSerializer(serializers.ModelSerializer):
-    """
-    Serializer for products
-    """
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.IntegerField(write_only=True)
-    
+    tag = TagSerializer(many=True, read_only=True)
+    attribute_values = AttributeValueSerializer(many=True, read_only=True)
+    # category = CategorySerializer(read_only=True) #TODO Check this code
+    # category_id = serializers.IntegerField(write_only=True)
+    # image = serializers.ImageField(use_url=True)
+    images = ProductImageSerializer(many=True, read_only=True)
     class Meta:
         model = Product
-        fields = '__all__' 
+        fields = '__all__'
+        
+    
