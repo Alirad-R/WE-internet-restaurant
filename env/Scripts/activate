@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\alira\OneDrive\Desktop\University\Term 6\Internet Engineering\restaurant\env"
+VIRTUAL_ENV="C:\Users\alira\OneDrive\Desktop\University\Term 6\Internet Engineering\restaurant\backend_project\env"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
