@@ -18,6 +18,7 @@ class Order(models.Model):
         ('paid', 'Paid'),
         ('failed', 'Failed'),
         ('refunded', 'Refunded'),
+        ('rejected', 'Rejected'),
     )
     
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
@@ -47,6 +48,30 @@ class Order(models.Model):
             else:  # New order, may not have items yet
                 self.total_amount = self.total_amount or 0
         super().save(*args, **kwargs)
+        
+    def pay(self):
+        if self.payment_status == 'paid':
+            raise ValueError('Order is already paid')
+        
+        from .models import Wallet, Transaction
+        
+        wallet, _ = Wallet.objects.get_or_create(user=self.customer)
+        if wallet.balance < self.total_amount:
+            raise ValueError('Insufficient funds')
+        wallet.balance -= self.total_amount
+        wallet.save()
+        
+        Transaction.objects.create(
+            wallet=wallet,
+            T_type='purchase',
+            amount=self.total_amount,
+            description=f'Order #{self.id}'
+        )
+        
+        self.payment_status = 'paid'
+        self.save()
+        
+        
 
 class OrderItem(models.Model):
     """
@@ -118,3 +143,28 @@ class CartItem(models.Model):
         Calculate the subtotal for this cart item
         """
         return self.quantity * self.product.price 
+    
+    
+class Wallet(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    def __str__(self):
+        return f"Wallet for {self.user.username}"
+    
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('topup', 'Top-up'),
+        ('refund', 'Refund'),
+        ('purchase', 'Purchase'),
+    ]
+    
+    user = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
+    T_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.T_type} transaction for {self.user.user.username}"
+    
