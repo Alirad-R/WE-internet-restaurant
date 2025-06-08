@@ -31,7 +31,9 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-j6%%^1bpb5y_by
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['*']  # ❗ Only for local dev, not production
+
 
 
 # Application definition
@@ -49,6 +51,7 @@ INSTALLED_APPS = [
     # 'users',
     'products',
     'orders',
+    # 'rest_framework_authtoken',
 ]
 
 MIDDLEWARE = [
