@@ -12,7 +12,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
     queryset = Product.objects.all()  # Fixed empty queryset
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
     filter_fields = ['name', 'category', 'tags', 'price']
     
@@ -34,25 +34,25 @@ class ProductViewSet(viewsets.ModelViewSet):
 class ProductImageViewSet(viewsets.ModelViewSet):
     queryset = ProductImage.objects.all()
     serializer_class = ProductImageSerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
     
 class AttributeViewSet(viewsets.ModelViewSet):
     queryset = Attribute.objects.all()
     serializer_class = AttributeSerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
     
 class AttributeValueViewSet(viewsets.ModelViewSet):
     queryset = AttributeValue.objects.all()
     serializer_class = AttributeValueSerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
     
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
