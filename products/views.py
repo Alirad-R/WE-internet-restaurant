@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Product, Category, Attribute, AttributeValue, Tag, ProductImage
 from .serializers import ProductSerializer, CategorySerializer, AttributeSerializer, AttributeValueSerializer, TagSerializer, ProductImageSerializer
+from django_filters.rest_framework import DjangoFilterBackend
 # Create your views here.
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -12,6 +13,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()  # Fixed empty queryset
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = ['name', 'category', 'tags', 'price']
     
     @action(detail=False, methods=['get'])
     def featured(self, request):
