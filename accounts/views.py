@@ -66,7 +66,7 @@ class CustomerProfileViewSet(viewsets.ModelViewSet):
     """
     queryset = CustomerProfile.objects.all()
     serializer_class = CustomerProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
     
     def get_queryset(self):
         # Users can only see their own profile
@@ -173,7 +173,7 @@ class PasswordResetConfirmView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = []
     
     def get(self, request):
         """
