@@ -1,10 +1,13 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate, TruncMonth, TruncYear
+from datetime import datetime
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from products.models import Product
-from .models import Order, OrderItem, Cart, CartItem
+from .models import Order, OrderItem, Cart, CartItem, Wallet, Transaction
 from .serializers import (
     OrderSerializer,
     OrderCreateSerializer,
@@ -21,6 +24,73 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Users can only see their own orders
         return Order.objects.filter(customer=self.request.user).order_by('-order_date')
+    
+    #To pay
+    @action(detail=True, methods=['post'], url_path='pay') #This lets us call POST /api/orders/12/pay/
+    def pay(self, request, pk=None):
+        order = self.get_object()
+        try:
+            order.pay()
+            return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+    #To confirm payment
+    @action(detail=True, methods=['post'], url_path='confirm_payment') #/api/orders/5/confirm-payment/
+    def confirm_payment(self, request, pk=None):
+        order = self.get_object()
+        try:
+            order.pay()
+            return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+    #To reject payment
+    @action(detail=True, methods=['post'], url_path='reject_payment') #/api/orders/5/reject-payment/
+    def reject_payment(self, request, pk=None):
+        order = self.get_object()
+        if order.payment_status != 'pending':
+            return Response({'error': 'only pending orders can be rejected'}, status=status.HTTP_400_BAD_REQUEST)
+        order.payment_status = 'rejected'
+        order.save()
+        return Response({'detail': 'Order rejected successfully'}, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='sales_report')
+    def sales_report(self, request):
+        
+        #optional filters
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        group_by = request.query_params.get('group_by', 'day')
+        
+        queryset = Order.objects.filter(payment_status='paid')
+        
+        #apply date filters
+        if start_date:
+            queryset = queryset.filter(order_date__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(order_date__date__lte=end_date)
+            
+        #grouping
+        if group_by == 'month':
+            date_trunc = TruncMonth('order_date')
+        elif group_by == 'year':
+            date_trunc = TruncYear('order_date')
+        else:
+            date_trunc = TruncDate('order_date')
+            
+        report = (
+            queryset
+            .annotate(period=date_trunc)
+            .values('period')
+            .annotate(
+                total=Sum('total_amount'),
+                order_count=Count('id'),
+            )
+        )
+        
+        return Response(report)
+        
     
     def get_serializer_class(self):
         if self.action == 'create':
