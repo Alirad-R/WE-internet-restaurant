@@ -169,3 +169,15 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
+
+class UserListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing users with essential information for admin management
+    """
+    customer_profile = CustomerProfileSerializer(read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 
+                 'is_active', 'date_joined', 'last_login', 'customer_profile')
+        read_only_fields = ('id', 'date_joined', 'last_login')

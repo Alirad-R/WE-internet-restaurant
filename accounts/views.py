@@ -21,7 +21,9 @@ from .serializers import (
     UserWithProfileSerializer,
     CustomerProfileSerializer,
     CustomerProfileUpdateSerializer,
+    UserListSerializer,
 )
+from django.db import models
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -224,3 +226,84 @@ class UserProfileView(APIView):
         # Return updated user with profile
         result_serializer = UserWithProfileSerializer(user)
         return Response(result_serializer.data)
+
+class AdminUserManagementViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for admin user management operations
+    Provides endpoints for listing users and managing their account status
+    """
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserListSerializer
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get_queryset(self):
+        queryset = User.objects.all().order_by('-date_joined')
+        
+        # Filter by active status if specified
+        is_active = self.request.query_params.get('is_active', None)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        # Search by username, email, or name
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                models.Q(username__icontains=search) |
+                models.Q(email__icontains=search) |
+                models.Q(first_name__icontains=search) |
+                models.Q(last_name__icontains=search)
+            )
+        
+        return queryset
+    
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        """
+        Activate a user account
+        """
+        user = self.get_object()
+        user.is_active = True
+        user.save()
+        return Response({
+            "message": f"User {user.username} has been activated successfully.",
+            "user": UserListSerializer(user).data
+        })
+    
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        """
+        Deactivate a user account
+        """
+        user = self.get_object()
+        if user == request.user:
+            return Response(
+                {"error": "You cannot deactivate your own account."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.is_active = False
+        user.save()
+        return Response({
+            "message": f"User {user.username} has been deactivated successfully.",
+            "user": UserListSerializer(user).data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """
+        Get user statistics
+        """
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        inactive_users = User.objects.filter(is_active=False).count()
+        
+        return Response({
+            "total_users": total_users,
+            "active_users": active_users,
+            "inactive_users": inactive_users,
+            "registration_last_7_days": User.objects.filter(
+                date_joined__gte=timezone.now() - timezone.timedelta(days=7)
+            ).count(),
+            "registration_last_30_days": User.objects.filter(
+                date_joined__gte=timezone.now() - timezone.timedelta(days=30)
+            ).count()
+        })

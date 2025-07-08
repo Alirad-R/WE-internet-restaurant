@@ -1,140 +1,189 @@
-# WE-internet-restaurant
-Online restaurant for businesses
+# Restaurant Management System
+
+A comprehensive Django-based restaurant management system with advanced features including order management, coupon system, and notifications.
+
+## Features
+
+### Core Features
+- User Authentication & Authorization
+- Product Management
+- Order Processing
+- Advanced Coupon System
+- Real-time Notifications
+- Admin Dashboard
+
+### Coupon System
+- Multiple discount types:
+  - Percentage discounts
+  - Fixed amount discounts
+  - Buy X Get Y offers
+  - Tiered discounts
+- Customer tier-based rules (ALL, NEW, REGULAR, VIP)
+- Time and seasonal restrictions
+- Usage tracking and validation
+- Referral system
+- Integration with orders
+
+### Technical Features
+- JWT Authentication
+- Celery for async tasks
+- Redis caching
+- S3/Local file storage
+- Email notifications
+- Background task processing
+
+## Technology Stack
+
+- **Backend**: Django 5.2, Django REST Framework
+- **Database**: PostgreSQL (Production), SQLite (Development)
+- **Caching**: Redis
+- **Task Queue**: Celery
+- **Storage**: AWS S3 (Production), Local (Development)
+- **Authentication**: JWT (JSON Web Tokens)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Alirad-R/WE-internet-restaurant.git
+cd WE-internet-restaurant
+```
+
+2. Create and activate virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+.\venv\Scripts\activate   # Windows
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Set up environment variables:
+Create a `.env` file in the root directory and add:
+```env
+DJANGO_SECRET_KEY=your_secret_key
+DJANGO_DEBUG=True
+DATABASE_URL=your_database_url
+REDIS_URL=redis://localhost:6379/0
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_STORAGE_BUCKET_NAME=your_bucket_name
+EMAIL_HOST=your_email_host
+EMAIL_PORT=587
+EMAIL_HOST_USER=your_email
+EMAIL_HOST_PASSWORD=your_email_password
+```
+
+5. Run migrations:
+```bash
+python manage.py migrate
+```
+
+6. Create superuser:
+```bash
+python manage.py createsuperuser
+```
+
+7. Run development server:
+```bash
+python manage.py runserver
+```
 
 ## Project Structure
 
-The restaurant project follows a clean, modular Django architecture:
-
-### Core Apps
-
-1. **accounts**
-   - User authentication and management
-   - Customer profile management
-   - Features:
-     - JWT authentication with access and refresh tokens
-     - Password reset with OTP verification
-     - Custom user model with extended fields
-     - Customer profiles with dietary preferences
-     - Full CRUD operations through REST API
-
-2. **products**
-   - Product catalog management
-   - Product categories
-   - Menu items
-
-3. **orders**
-   - Shopping cart management
-   - Order processing and tracking
-   - Order history and details
-   - Features:
-     - Persistent shopping cart for users
-     - Order creation from cart
-     - Order status tracking
-     - Order cancellation
-
-### API Endpoints
-
-#### Authentication and User Management
-- `POST /api/auth/login/` - User authentication
-- `POST /api/auth/token/refresh/` - Refresh JWT token
-- `POST /api/auth/password-reset/request/` - Request password reset
-- `POST /api/auth/password-reset/confirm/` - Confirm password reset with OTP
-- `GET /api/auth/profile/` - Get user profile with customer data
-- `PUT /api/auth/profile/` - Update user profile and customer data
-
-#### User CRUD
-- `GET|POST /api/auth/users/` - List or create users
-- `GET|PUT|DELETE /api/auth/users/{id}/` - Retrieve, update, or delete a user
-- `GET /api/auth/users/{id}/retrieve_with_profile/` - Get user with profile information
-
-#### Customer Profile Management
-- `GET|POST /api/auth/customer-profiles/` - List or create customer profiles
-- `GET|PUT|PATCH|DELETE /api/auth/customer-profiles/{id}/` - Manage customer profile
-- `GET /api/auth/customer-profiles/me/` - Get current user's customer profile
-
-#### Product Management
-- `GET|POST /api/products/products/` - List or create products
-- `GET|PUT|PATCH|DELETE /api/products/products/{id}/` - Manage products
-- `GET /api/products/products/featured/` - Get featured products
-
-#### Category Management
-- `GET|POST /api/products/categories/` - List or create categories
-- `GET|PUT|PATCH|DELETE /api/products/categories/{id}/` - Manage categories
-
-#### Cart Management
-- `GET /api/orders/cart/` - View current cart
-- `POST /api/orders/cart/add_item/` - Add item to cart
-- `POST /api/orders/cart/remove_item/` - Remove item from cart
-- `POST /api/orders/cart/update_quantity/` - Update item quantity in cart
-- `POST /api/orders/cart/clear/` - Clear all items from cart
-- `POST /api/orders/cart/checkout/` - Create order from cart items
-
-#### Order Management
-- `GET|POST /api/orders/orders/` - List or create orders
-- `GET|PUT|PATCH|DELETE /api/orders/orders/{id}/` - Manage orders
-- `POST /api/orders/orders/{id}/cancel/` - Cancel a pending order
-
-### Project Directory Structure
-
 ```
 restaurant_project/
-│
-├── accounts/                # Auth and user/profile management
-│   ├── migrations/
-│   ├── admin.py            # Admin interface for User and CustomerProfile
-│   ├── apps.py
-│   ├── models.py           # User, CustomerProfile, and OTP models
-│   ├── serializers.py      # User and CustomerProfile serializers
-│   ├── urls.py             # Auth and profile endpoints
-│   └── views.py            # Auth and profile views
-│
-├── backend_project/         # Main project configuration
-│   ├── asgi.py
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-│
-├── products/                # Product catalog
-│   ├── migrations/
-│   ├── admin.py            # Admin interface for Product and Category
-│   ├── apps.py
-│   ├── models.py           # Product and Category models
-│   ├── serializers.py      # Product and Category serializers
-│   ├── urls.py             # Product and Category endpoints
-│   └── views.py            # Product and Category views
-│
-├── orders/                # Order and cart management
-│   ├── migrations/
-│   ├── admin.py           # Admin interface for Order and Cart
-│   ├── apps.py
-│   ├── models.py          # Order, OrderItem, Cart, and CartItem models
-│   ├── serializers.py     # Order and Cart serializers
-│   ├── urls.py            # Order and Cart endpoints
-│   └── views.py           # Order and Cart views
-│
-├── manage.py                # Django management script
-└── README.md                # Project documentation
+├── accounts/          # User management
+├── products/          # Product management
+├── orders/           # Order processing
+├── coupons/          # Coupon system
+├── alerts/           # Notification system
+├── backend_project/  # Core configuration
+└── manage.py
 ```
 
-### Customer Profile Implementation
+## API Documentation
 
-The customer profile management feature includes:
+### Authentication
+- POST `/api/auth/token/` - Obtain JWT token
+- POST `/api/auth/token/refresh/` - Refresh JWT token
 
-- `CustomerProfile` model in the `accounts` app that extends the User model via OneToOneField
-- Fields include: phone_number, address, city, state, country, postal_code, preferences, allergies, dietary_restrictions
-- Auto-creation of profile when a new user is registered
-- Full CRUD operations through REST API
-- JSON field for storing flexible preference data
-- Admin interface for easy management
+### Products
+- GET `/api/products/` - List products
+- POST `/api/products/` - Create product
+- GET `/api/products/{id}/` - Retrieve product
+- PUT `/api/products/{id}/` - Update product
+- DELETE `/api/products/{id}/` - Delete product
 
-### Cart and Order Implementation
+### Orders
+- GET `/api/orders/` - List orders
+- POST `/api/orders/` - Create order
+- GET `/api/orders/{id}/` - Retrieve order
+- PUT `/api/orders/{id}/` - Update order
+- DELETE `/api/orders/{id}/` - Delete order
 
-The cart and order management system includes:
+### Coupons
+- GET `/api/coupons/` - List coupons
+- POST `/api/coupons/` - Create coupon
+- GET `/api/coupons/{id}/` - Retrieve coupon
+- PUT `/api/coupons/{id}/` - Update coupon
+- DELETE `/api/coupons/{id}/` - Delete coupon
+- POST `/api/coupons/{id}/validate/` - Validate coupon
+- POST `/api/coupons/{id}/apply/` - Apply coupon
 
-- Shopping cart that persists between user sessions
-- Cart items with product references and quantities
-- Order creation from cart items
-- Order tracking with status updates
-- Support for multiple order items per order
-- Transaction support to ensure data integrity
-- Admin interface for order management
+### Notifications
+- GET `/api/notifications/` - List notifications
+- PUT `/api/notifications/{id}/read/` - Mark notification as read
+
+## Development
+
+### Running Tests
+```bash
+python manage.py test
+```
+
+### Running Celery
+```bash
+celery -A backend_project worker -l info
+celery -A backend_project beat -l info
+```
+
+### Code Style
+The project follows PEP 8 style guide. Run linting:
+```bash
+flake8
+```
+
+## Deployment
+
+### Production Setup
+1. Set DEBUG=False in settings
+2. Configure proper database (PostgreSQL recommended)
+3. Set up proper email backend
+4. Configure AWS S3 for file storage
+5. Set up proper CORS settings
+6. Configure proper cache backend
+7. Set up proper logging
+
+### Server Requirements
+- Python 3.8+
+- PostgreSQL
+- Redis
+- Celery
+- Nginx (recommended)
+- Gunicorn (recommended)
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
