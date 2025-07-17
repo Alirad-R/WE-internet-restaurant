@@ -24,6 +24,7 @@ from .serializers import (
 from django.db import models
 from .reports import SalesReportGenerator
 from django.utils.dateparse import parse_date
+from rest_framework.permissions import IsAdminUser
 
 class OrderViewSet(viewsets.ModelViewSet):
     """

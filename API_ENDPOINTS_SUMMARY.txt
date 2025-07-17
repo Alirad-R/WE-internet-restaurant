@@ -1,0 +1,113 @@
+# API Endpoints Summary (with Usage Examples)
+
+## Authentication (accounts)
+- POST   /api/auth/token/                - Obtain JWT token
+  - Example: `{ "username": "user", "password": "pass" }`
+  - curl: `curl -X POST -d '{"username":"user","password":"pass"}' http://localhost:8000/api/auth/token/`
+- POST   /api/auth/token/refresh/        - Refresh JWT token
+  - Example: `{ "refresh": "<refresh_token>" }`
+- POST   /api/auth/login/                - Login (custom view)
+  - Example: `{ "username": "user", "password": "pass" }`
+- POST   /api/auth/password-reset/request/ - Request password reset
+  - Example: `{ "email": "user@example.com" }`
+- POST   /api/auth/password-reset/confirm/ - Confirm password reset
+  - Example: `{ "token": "<token>", "new_password": "..." }`
+- GET    /api/auth/profile/              - Get current user's profile
+  - Usage: Send GET with JWT token in Authorization header
+
+### Users & Profiles
+- GET/POST /api/auth/users/              - List or create users
+  - GET: List all users (admin only)
+  - POST: `{ "username": "newuser", "password": "..." }`
+- GET/PUT/DELETE /api/auth/users/{id}/   - Retrieve, update, or delete user
+  - Usage: `/api/auth/users/5/` (GET, PUT, DELETE)
+- GET/PUT /api/auth/profiles/            - List or update customer profile
+  - Usage: GET or PUT with profile data
+- GET     /api/auth/profiles/me/         - Get current user's profile
+  - Usage: GET with JWT token
+- GET/POST /api/auth/admin/users/        - Admin user management
+  - Usage: Admin only, manage users
+
+## Products
+- GET/POST   /api/products/              - List or create products
+  - GET: `/api/products/?search=burger&ordering=-price`
+  - POST: `{ "name": "Burger", "price": "5.99", ... }`
+- GET/PUT/DELETE /api/products/{id}/     - Retrieve, update, or delete product
+  - Usage: `/api/products/3/` (GET, PUT, DELETE)
+- GET       /api/products/featured/      - List featured products
+  - Usage: GET `/api/products/featured/`
+- GET/POST   /api/products/categories/   - List or create categories
+  - Usage: GET or POST with `{ "name": "Drinks" }`
+- GET/POST   /api/products/attributes/   - List or create attributes
+  - Usage: GET or POST with `{ "name": "Spicy" }`
+- GET/POST   /api/products/attribute_values/ - List or create attribute values
+  - Usage: GET or POST with `{ "attribute_id": 1, "value": "Mild" }`
+- GET/POST   /api/products/tags/         - List or create tags
+  - Usage: GET or POST with `{ "name": "Vegan" }`
+- GET/POST   /api/products/product-images/ - List or create product images
+  - Usage: POST with image file and product ID
+
+## Orders
+- GET/POST   /api/orders/orders/         - List or create orders
+  - GET: `/api/orders/orders/?status=delivered`
+  - POST: `{ "items": [{"product_id":1,"quantity":2}], "delivery_address": "..." }`
+- GET/PUT/DELETE /api/orders/orders/{id}/- Retrieve, update, or delete order
+  - Usage: `/api/orders/orders/10/` (GET, PUT, DELETE)
+- POST      /api/orders/orders/{id}/pay/ - Pay for an order
+  - Usage: POST to `/api/orders/orders/10/pay/`
+- GET/POST   /api/orders/returns/        - List or create return requests
+  - Usage: GET or POST with `{ "order_id": 10, "reason": "Wrong item" }`
+- GET/PUT/DELETE /api/orders/returns/{id}/ - Retrieve, update, or delete return request
+  - Usage: `/api/orders/returns/5/` (GET, PUT, DELETE)
+- GET       /api/orders/reports/sales-by-product/      - Sales by product report
+  - Usage: GET `/api/orders/reports/sales-by-product/`
+- GET       /api/orders/reports/sales-by-date/         - Sales by date report
+  - Usage: GET `/api/orders/reports/sales-by-date/`
+- GET       /api/orders/reports/best-sellers/          - Best sellers report
+  - Usage: GET `/api/orders/reports/best-sellers/`
+- GET       /api/orders/reports/worst-sellers/         - Worst sellers report
+  - Usage: GET `/api/orders/reports/worst-sellers/`
+- GET       /api/orders/reports/low-stock-alerts/      - Low stock alerts
+  - Usage: GET `/api/orders/reports/low-stock-alerts/`
+- GET       /api/orders/reports/sales-summary/         - Sales summary
+  - Usage: GET `/api/orders/reports/sales-summary/`
+- GET       /api/orders/reports/product-performance/{product_id}/ - Product performance
+  - Usage: `/api/orders/reports/product-performance/3/`
+
+## Coupons
+- GET/POST   /api/coupons/coupons/       - List or create coupons
+  - GET: `/api/coupons/coupons/`
+  - POST: `{ "code": "SAVE10", "discount_type": "percentage", ... }`
+- GET/PUT/DELETE /api/coupons/coupons/{id}/ - Retrieve, update, or delete coupon
+  - Usage: `/api/coupons/coupons/2/` (GET, PUT, DELETE)
+- POST      /api/coupons/coupons/{id}/validate/ - Validate coupon
+  - POST: `{ "cart_value": "20.00", "cart_items": [{"product_id":1,"quantity":2}] }`
+- POST      /api/coupons/coupons/{id}/apply/    - Apply coupon
+  - POST: `{ "order_id": 10 }`
+- GET/POST   /api/coupons/referral-coupons/     - List or create referral coupons
+  - Usage: GET or POST with `{ "referrer_id": 1, ... }`
+- GET/PUT/DELETE /api/coupons/referral-coupons/{id}/ - Retrieve, update, or delete referral coupon
+  - Usage: `/api/coupons/referral-coupons/5/` (GET, PUT, DELETE)
+
+## Alerts & Notifications
+- GET/POST   /api/alerts/alerts/          - List or create product alerts
+  - GET: `/api/alerts/alerts/`
+  - POST: `{ "product_id": 1, "alert_type": "low_stock" }`
+- GET/PUT/DELETE /api/alerts/alerts/{id}/ - Retrieve, update, or delete product alert
+  - Usage: `/api/alerts/alerts/3/` (GET, PUT, DELETE)
+- GET/POST   /api/alerts/notifications/   - List or create alert notifications
+  - GET: `/api/alerts/notifications/`
+  - POST: `{ "user_id": 1, "message": "..." }`
+- GET/PUT/DELETE /api/alerts/notifications/{id}/ - Retrieve, update, or delete alert notification
+  - Usage: `/api/alerts/notifications/2/` (GET, PUT, DELETE)
+- GET       /api/alerts/metrics/popularity/ - Product popularity metrics
+  - Usage: GET `/api/alerts/metrics/popularity/`
+- GET       /api/alerts/metrics/trending/   - Trending products
+  - Usage: GET `/api/alerts/metrics/trending/`
+
+## General
+- All endpoints support pagination, filtering, and ordering where applicable.
+- Most endpoints require JWT authentication unless otherwise noted.
+- For all POST/PUT requests, set `Content-Type: application/json` and include JWT in `Authorization` header if required.
+
+# For detailed request/response formats, see API.md or the DRF browsable API. 

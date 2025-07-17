@@ -14,16 +14,16 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'users', UserViewSet)
+router.register(r'users', UserViewSet, basename='users')
 router.register(r'profiles', CustomerProfileViewSet)
-router.register(r'admin/users', AdminUserManagementViewSet)
+router.register(r'admin/users', AdminUserManagementViewSet, basename='admin-user')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('auth/login/', LoginView.as_view(), name='login'),
-    # path('jwt/create/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    # path('jwt/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('auth/password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
-    path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
 ]

@@ -71,7 +71,7 @@ MIDDLEWARE = [
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:8000').split(',')
     # Security settings for production
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
@@ -251,8 +251,7 @@ CORS_ALLOW_METHODS = [
 # Cache settings
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
 

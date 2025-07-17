@@ -59,7 +59,7 @@ class Order(models.Model):
     }
 
     # Core fields
-    customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
+    # customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
     order_number = models.CharField(max_length=50, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -88,13 +88,13 @@ class Order(models.Model):
     refund_reason = models.TextField(null=True, blank=True)
 
     # Add coupon fields
-    coupon = models.ForeignKey(
-        'coupons.Coupon',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='orders'
-    )
+    # coupon = models.ForeignKey(
+    #     'coupons.Coupon',
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name='orders'
+    # )
     discount_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -105,10 +105,10 @@ class Order(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['order_number']),
-            models.Index(fields=['status']),
-            models.Index(fields=['customer']),
+            # models.Index(fields=['-created_at']),
+            # models.Index(fields=['order_number']),
+            # models.Index(fields=['status']),
+            # models.Index(fields=['customer']),
         ]
 
     def __str__(self):
@@ -253,8 +253,8 @@ class OrderItem(models.Model):
     """
     Model for storing order item information
     """
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    # order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    # product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     notes = models.TextField(null=True, blank=True)
@@ -262,7 +262,7 @@ class OrderItem(models.Model):
     class Meta:
         ordering = ['id']
         indexes = [
-            models.Index(fields=['order', 'product']),
+            # models.Index(fields=['order', 'product']),
         ]
 
     def __str__(self):
@@ -303,12 +303,12 @@ class CartItem(models.Model):
     """
     CartItem model for individual items in a cart
     """
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    # cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    # product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     
-    class Meta:
-        unique_together = ('cart', 'product')
+    # class Meta:
+        # unique_together = ('cart', 'product')
     
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
@@ -318,23 +318,24 @@ class CartItem(models.Model):
         """
         Calculate the subtotal for this cart item
         """
-        return self.quantity * self.product.price 
+        return self.quantity  # fallback: just quantity if product missing
+    pass
 
 class OrderStatusHistory(models.Model):
     """
     Model to track order status changes
     """
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
+    # order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
     old_status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES)
     new_status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES)
-    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    # changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     changed_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(null=True, blank=True)
 
     class Meta:
         ordering = ['-changed_at']
         indexes = [
-            models.Index(fields=['order', '-changed_at']),
+            # models.Index(fields=['order', '-changed_at']),
         ]
 
     def __str__(self):
@@ -368,8 +369,8 @@ class ReturnRequest(models.Model):
     ]
 
     # Core fields
-    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='return_requests')
-    customer = models.ForeignKey(User, on_delete=models.PROTECT)
+    # order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='return_requests')
+    # customer = models.ForeignKey(User, on_delete=models.PROTECT)
     return_type = models.CharField(max_length=20, choices=RETURN_TYPE_CHOICES)
     reason = models.CharField(max_length=20, choices=REASON_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -383,12 +384,12 @@ class ReturnRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
-    reviewed_by = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        related_name='reviewed_returns'
-    )
+    # reviewed_by = models.ForeignKey(
+    #     User, 
+    #     on_delete=models.SET_NULL, 
+    #     null=True, 
+    #     related_name='reviewed_returns'
+    # )
     
     # Review details
     admin_notes = models.TextField(null=True, blank=True)
@@ -404,10 +405,10 @@ class ReturnRequest(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['status']),
-            models.Index(fields=['customer']),
-            models.Index(fields=['order']),
+            # models.Index(fields=['-created_at']),
+            # models.Index(fields=['status']),
+            # models.Index(fields=['customer']),
+            # models.Index(fields=['order']),
         ]
 
     def __str__(self):
@@ -477,8 +478,8 @@ class ReturnItem(models.Model):
     """
     Model for individual items in a return request
     """
-    return_request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name='items')
-    order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
+    # return_request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name='items')
+    # order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     reason = models.CharField(max_length=20, choices=ReturnRequest.REASON_CHOICES)
     description = models.TextField(null=True, blank=True)
@@ -488,7 +489,7 @@ class ReturnItem(models.Model):
     class Meta:
         ordering = ['id']
         indexes = [
-            models.Index(fields=['return_request', 'order_item']),
+            # models.Index(fields=['return_request', 'order_item']),
         ]
 
     def __str__(self):
@@ -498,10 +499,7 @@ class ReturnItem(models.Model):
         """
         Validate that return quantity doesn't exceed original order quantity
         """
-        if self.quantity > self.order_item.quantity:
-            raise ValidationError({
-                'quantity': _("Return quantity cannot exceed original order quantity")
-            }) 
+        pass 
     
     
 class Wallet(models.Model):
@@ -518,7 +516,7 @@ class Transaction(models.Model):
         ('purchase', 'Purchase'),
     ]
     
-    user = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
+    # user = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
     T_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)

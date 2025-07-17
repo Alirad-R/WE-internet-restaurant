@@ -9,14 +9,14 @@ from .models import (
 
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
-    list_display = [
-        'code', 'discount_type', 'discount_value', 'is_active',
-        'valid_from', 'valid_until', 'current_uses', 'customer_tier'
-    ]
-    list_filter = [
-        'is_active', 'discount_type', 'customer_tier',
-        'created_at', 'valid_from', 'valid_until'
-    ]
+    # list_display = [
+    #     'code', 'discount_type', 'discount_value', 'is_active',
+    #     'valid_from', 'valid_until', 'current_uses', 'customer_tier'
+    # ]
+    # list_filter = [
+    #     'is_active', 'discount_type', 'customer_tier',
+    #     'created_at', 'valid_from', 'valid_until'
+    # ]
     search_fields = ['code', 'description']
     readonly_fields = ['current_uses', 'created_at', 'updated_at']
     fieldsets = [
@@ -71,37 +71,37 @@ class CouponAdmin(admin.ModelAdmin):
 
 @admin.register(CouponUsage)
 class CouponUsageAdmin(admin.ModelAdmin):
-    list_display = ['coupon', 'user', 'used_at', 'order']
-    list_filter = ['used_at', 'coupon']
+    # list_display = ['coupon', 'user', 'used_at', 'order']
+    # list_filter = ['used_at', 'coupon']
     search_fields = ['coupon__code', 'user__username']
     readonly_fields = ['used_at']
 
 @admin.register(ReferralCoupon)
 class ReferralCouponAdmin(admin.ModelAdmin):
-    list_display = [
-        'referrer', 'referral_bonus',
-        'max_referrals', 'current_referrals'
-    ]
-    list_filter = ['referrer']
+    # list_display = [
+    #     'referrer', 'referral_bonus',
+    #     'max_referrals', 'current_referrals'
+    # ]
+    # list_filter = ['referrer']
     search_fields = ['referrer__username']
     readonly_fields = ['current_referrals']
 
 @admin.register(CouponValidationHistory)
 class CouponValidationHistoryAdmin(admin.ModelAdmin):
-    list_display = [
-        'coupon', 'user', 'attempted_at',
-        'validation_error'
-    ]
-    list_filter = ['attempted_at', 'validation_error']
+    # list_display = [
+    #     'coupon', 'user', 'attempted_at',
+    #     'validation_error'
+    # ]
+    # list_filter = ['attempted_at', 'validation_error']
     search_fields = ['coupon__code', 'user__username']
     readonly_fields = ['attempted_at']
 
 @admin.register(CouponNotification)
 class CouponNotificationAdmin(admin.ModelAdmin):
-    list_display = [
-        'coupon', 'notification_type', 'user',
-        'created_at', 'read_at'
-    ]
-    list_filter = ['notification_type', 'created_at', 'read_at']
+    # list_display = [
+    #     'coupon', 'notification_type', 'user',
+    #     'created_at', 'read_at'
+    # ]
+    # list_filter = ['notification_type', 'created_at', 'read_at']
     search_fields = ['coupon__code', 'user__username', 'message']
     readonly_fields = ['created_at', 'read_at'] 

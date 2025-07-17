@@ -128,12 +128,12 @@ class Coupon(models.Model):
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='created_coupons'
-    )
+    # created_by = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL,
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     related_name='created_coupons'
+    # )
 
     # New fields for advanced conditions
     customer_tier = models.CharField(
@@ -220,9 +220,9 @@ class Coupon(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['code']),
-            models.Index(fields=['valid_from', 'valid_until']),
-            models.Index(fields=['is_active']),
+            # models.Index(fields=['code']),
+            # models.Index(fields=['valid_from', 'valid_until']),
+            # models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -631,31 +631,31 @@ class CouponUsage(models.Model):
     """
     Model to track coupon usage by users
     """
-    coupon = models.ForeignKey(
-        Coupon,
-        on_delete=models.CASCADE,
-        related_name='usages'
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='coupon_usages'
-    )
+    # coupon = models.ForeignKey(
+    #     Coupon,
+    #     on_delete=models.CASCADE,
+    #     related_name='usages'
+    # )
+    # user = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL,
+    #     on_delete=models.CASCADE,
+    #     related_name='coupon_usages'
+    # )
     used_at = models.DateTimeField(auto_now_add=True)
-    order = models.ForeignKey(
-        'orders.Order',
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='coupon_usages'
-    )
+    # order = models.ForeignKey(
+    #     'orders.Order',
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     related_name='coupon_usages'
+    # )
 
     class Meta:
         ordering = ['-used_at']
         indexes = [
-            models.Index(fields=['coupon', 'user']),
-            models.Index(fields=['used_at']),
+            # models.Index(fields=['coupon', 'user']),
+            # models.Index(fields=['used_at']),
         ]
-        unique_together = ['coupon', 'order']  # Prevent duplicate usage on same order
+        # unique_together = ['coupon', 'order']  # Prevent duplicate usage on same order
 
     def __str__(self):
         return f"{self.coupon.code} used by {self.user.username}"
@@ -664,16 +664,16 @@ class CouponValidationHistory(models.Model):
     """
     Track failed validation attempts and reasons
     """
-    coupon = models.ForeignKey(
-        Coupon,
-        on_delete=models.CASCADE,
-        related_name='validation_history'
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='coupon_validation_history'
-    )
+    # coupon = models.ForeignKey(
+    #     Coupon,
+    #     on_delete=models.CASCADE,
+    #     related_name='validation_history'
+    # )
+    # user = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL,
+    #     on_delete=models.CASCADE,
+    #     related_name='coupon_validation_history'
+    # )
     attempted_at = models.DateTimeField(auto_now_add=True)
     validation_error = models.CharField(max_length=255)
     order_value = models.DecimalField(
@@ -686,8 +686,8 @@ class CouponValidationHistory(models.Model):
     class Meta:
         ordering = ['-attempted_at']
         indexes = [
-            models.Index(fields=['coupon', 'user']),
-            models.Index(fields=['attempted_at']),
+            # models.Index(fields=['coupon', 'user']),
+            # models.Index(fields=['attempted_at']),
         ]
 
     def __str__(self):
@@ -697,16 +697,16 @@ class ReferralCoupon(models.Model):
     """
     Special coupons for customer referrals
     """
-    base_coupon = models.OneToOneField(
-        Coupon,
-        on_delete=models.CASCADE,
-        related_name='referral_details'
-    )
-    referrer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='created_referrals'
-    )
+    # base_coupon = models.OneToOneField(
+    #     Coupon,
+    #     on_delete=models.CASCADE,
+    #     related_name='referral_details'
+    # )
+    # referrer = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL,
+    #     on_delete=models.CASCADE,
+    #     related_name='created_referrals'
+    # )
     referral_bonus = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -723,8 +723,8 @@ class ReferralCoupon(models.Model):
     
     class Meta:
         indexes = [
-            models.Index(fields=['referrer']),
-            models.Index(fields=['base_coupon']),
+            # models.Index(fields=['referrer']),
+            # models.Index(fields=['base_coupon']),
         ]
 
     def __str__(self):
@@ -741,20 +741,20 @@ class CouponNotification(models.Model):
         ('referral_used', 'Referral Coupon Used'),
     ]
 
-    coupon = models.ForeignKey(
-        Coupon,
-        on_delete=models.CASCADE,
-        related_name='notifications'
-    )
+    # coupon = models.ForeignKey(
+    #     Coupon,
+    #     on_delete=models.CASCADE,
+    #     related_name='notifications'
+    # )
     notification_type = models.CharField(
         max_length=20,
         choices=NOTIFICATION_TYPES
     )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='coupon_notifications'
-    )
+    # user = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL,
+    #     on_delete=models.CASCADE,
+    #     related_name='coupon_notifications'
+    # )
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
@@ -762,8 +762,8 @@ class CouponNotification(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['user', 'read_at']),
-            models.Index(fields=['notification_type']),
+            # models.Index(fields=['user', 'read_at']),
+            # models.Index(fields=['notification_type']),
         ]
 
     def __str__(self):
