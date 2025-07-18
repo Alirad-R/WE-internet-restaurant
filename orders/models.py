@@ -88,13 +88,13 @@ class Order(models.Model):
     refund_reason = models.TextField(null=True, blank=True)
 
     # Add coupon fields
-    # coupon = models.ForeignKey(
-    #     'coupons.Coupon',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name='orders'
-    # )
+    coupon = models.ForeignKey(
+        'coupons.Coupon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders'
+    )
     discount_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,

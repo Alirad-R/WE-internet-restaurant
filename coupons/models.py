@@ -128,12 +128,12 @@ class Coupon(models.Model):
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    # created_by = models.ForeignKey(
-    #     settings.AUTH_USER_MODEL,
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     related_name='created_coupons'
-    # )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_coupons'
+    )
 
     # New fields for advanced conditions
     customer_tier = models.CharField(
@@ -220,9 +220,9 @@ class Coupon(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            # models.Index(fields=['code']),
-            # models.Index(fields=['valid_from', 'valid_until']),
-            # models.Index(fields=['is_active']),
+            models.Index(fields=['code']),
+            models.Index(fields=['valid_from', 'valid_until']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -642,18 +642,18 @@ class CouponUsage(models.Model):
     #     related_name='coupon_usages'
     # )
     used_at = models.DateTimeField(auto_now_add=True)
-    # order = models.ForeignKey(
-    #     'orders.Order',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     related_name='coupon_usages'
-    # )
+    order = models.ForeignKey(
+        'orders.Order',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='coupon_usages'
+    )
 
     class Meta:
         ordering = ['-used_at']
         indexes = [
             # models.Index(fields=['coupon', 'user']),
-            # models.Index(fields=['used_at']),
+            models.Index(fields=['used_at']),
         ]
         # unique_together = ['coupon', 'order']  # Prevent duplicate usage on same order
 

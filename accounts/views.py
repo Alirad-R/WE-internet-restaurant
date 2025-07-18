@@ -99,6 +99,7 @@ class CustomerProfileViewSet(viewsets.ModelViewSet):
         return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():

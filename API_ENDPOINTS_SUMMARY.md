@@ -7,11 +7,11 @@
 | Method | Endpoint                                 | Description                        |
 |--------|------------------------------------------|------------------------------------|
 | POST   | `/api/auth/token/`                       | Obtain JWT token                   | Needs fix
-| POST   | `/api/auth/token/refresh/`               | Refresh JWT token                  |
-| POST   | `/api/auth/login/`                       | Login (custom view)                |
+| POST   | `/api/auth/token/refresh/`               | Refresh JWT token                  | Needs fix
+| POST   | `/api/auth/login/`                       | Login (custom view)                | Works fine
 | POST   | `/api/auth/password-reset/request/`      | Request password reset             |
 | POST   | `/api/auth/password-reset/confirm/`      | Confirm password reset             |
-| GET    | `/api/auth/profile/`                     | Get current user's profile         |
+| GET    | `/api/auth/profile/`                     | Get current user's profile         | Works fine
 
 **Usage Examples:**
 ```bash
@@ -32,11 +32,11 @@ curl -X POST -H "Content-Type: application/json" \
 
 | Method    | Endpoint                              | Description                        |
 |-----------|---------------------------------------|------------------------------------|
-| GET/POST  | `/api/auth/users/`                    | List or create users               |
-| GET/PUT/DELETE | `/api/auth/users/{id}/`           | Retrieve, update, or delete user   |
-| GET/PUT   | `/api/auth/profiles/`                 | List or update customer profile    |
-| GET       | `/api/auth/profiles/me/`              | Get current user's profile         |
-| GET/POST  | `/api/auth/admin/users/`              | Admin user management              |
+| GET/POST  | `/api/auth/users/`                    | List or create users               | Works fine (You need to put the admin token for auth)
+| GET/PUT/DELETE | `/api/auth/users/{id}/`           | Retrieve, update, or delete user   | Works fine
+| GET/PUT   | `/api/auth/profiles/`                 | List or update customer profile    | Works fine
+| GET       | `/api/auth/profiles/me/`              | Get current user's profile         | Works fine
+| GET/POST  | `/api/auth/admin/users/`              | Admin user management              | Works fine
 
 **Example:**
 ```http
@@ -53,7 +53,7 @@ POST /api/auth/users/
 
 | Method    | Endpoint                              | Description                        |
 |-----------|---------------------------------------|------------------------------------|
-| GET/POST  | `/api/products/`                      | List or create products            |
+| GET/POST  | `/api/products/`                      | List or create products            | 
 | GET/PUT/DELETE | `/api/products/{id}/`             | Retrieve, update, or delete product|
 | GET       | `/api/products/featured/`             | List featured products             |
 | GET/POST  | `/api/products/categories/`           | List or create categories          |
