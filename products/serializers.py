@@ -16,6 +16,16 @@ class AttributeValueSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttributeValue
         fields = ['id', 'attribute', 'value']
+
+class NestedProductSerializer(serializers.ModelSerializer):
+    tags = TagSerializer(many=True, read_only=True)
+    images = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    attribute_values = AttributeValueSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'description', 'price', 'tags', 'attribute_values', 'images']
+
 class CategorySerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
     products = serializers.SerializerMethodField()
@@ -23,10 +33,6 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'description', 'image', 'products']
-
-    def get_products(self, obj):
-        from .serializers import ProductSerializer  # delayed import
-        return ProductSerializer(obj.products.all(), many=True).data
 
         
 class ProductImageSerializer(serializers.ModelSerializer):

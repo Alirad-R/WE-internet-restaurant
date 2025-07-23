@@ -2,6 +2,8 @@ from django.utils.deprecation import MiddlewareMixin
 from django.http import JsonResponse
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status
+from rest_framework.permissions import AllowAny
+from django.urls import resolve
 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
     """
@@ -18,6 +20,7 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
             '/api/auth/password-reset/confirm/',
             '/admin/',
             '/api/auth/users/', # Only for POST (register)
+            '/api/products/categories',
         ]
         
         # Skip middleware for exempt paths
@@ -27,6 +30,16 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
                     # Continue with JWT auth for GET, PUT, DELETE on users
                     break
                 return None
+            try:
+                match = resolve(request.path)
+                view_func = match.func
+
+                if hasattr(view_func, 'cls') and issubclass(view_func.cls, APIView):
+                    permission_classes = getattr(view_func.cls, 'permission_classes', [])
+                    if AllowAny in permission_classes:
+                        return None
+            except Exception:
+                pass
         
         # Skip authentication for non-API requests
         if not request.path.startswith('/api/'):
