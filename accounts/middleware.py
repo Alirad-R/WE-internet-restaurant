@@ -20,7 +20,7 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
             '/api/auth/password-reset/confirm/',
             '/admin/',
             '/api/auth/users/', # Only for POST (register)
-            '/api/products/categories',
+            # '/api/products/categories',
         ]
         
         # Skip middleware for exempt paths
