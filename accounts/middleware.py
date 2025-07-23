@@ -30,20 +30,21 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
                     # Continue with JWT auth for GET, PUT, DELETE on users
                     break
                 return None
-            try:
-                match = resolve(request.path)
-                view_func = match.func
-
-                if hasattr(view_func, 'cls') and issubclass(view_func.cls, APIView):
-                    permission_classes = getattr(view_func.cls, 'permission_classes', [])
-                    if AllowAny in permission_classes:
-                        return None
-            except Exception:
-                pass
         
         # Skip authentication for non-API requests
         if not request.path.startswith('/api/'):
             return None
+        
+        try:
+            match = resolve(request.path)
+            view_func = match.func
+
+            if hasattr(view_func, 'cls') and issubclass(view_func.cls, APIView):
+                permission_classes = getattr(view_func.cls, 'permission_classes', [])
+                if AllowAny in permission_classes:
+                    return None
+        except Exception:
+            pass
             
         # Try to authenticate with JWT
         jwt_authenticator = JWTAuthentication()
