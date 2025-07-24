@@ -4,6 +4,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from django.urls import resolve
+from rest_framework.views import APIView
 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
     """
@@ -20,7 +21,7 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
             '/api/auth/password-reset/confirm/',
             '/admin/',
             '/api/auth/users/', # Only for POST (register)
-            # '/api/products/categories',
+            '/api/products/categories',
         ]
         
         # Skip middleware for exempt paths

@@ -28,11 +28,16 @@ class NestedProductSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
-    products = serializers.SerializerMethodField()
+    products = NestedProductSerializer(many=True, read_only=True)
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'description', 'image', 'products']
+
+    # def get_products(self, obj):
+    #     return [{'id': product.id, 'name': product.name} for product in obj.products.all()]
+        # from .serializers import ProductSerializer  # delayed import
+        # return ProductSerializer(obj.products.all(), many=True).data
 
         
 class ProductImageSerializer(serializers.ModelSerializer):
