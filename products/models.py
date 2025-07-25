@@ -18,6 +18,12 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = "Categories"
         
+class Attribute(models.Model):
+    name = models.CharField(max_length=200)
+    
+    def __str__(self):
+        return self.name
+        
 class Tag(models.Model):
     name = models.CharField(max_length=200)
     
@@ -38,6 +44,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, blank=True)
+    attributes = models.ManyToManyField(Attribute, blank=True, related_name='products')
     
     def __str__(self):
         return self.name
@@ -70,11 +77,6 @@ class ProductImage(models.Model):
 
     
     
-class Attribute(models.Model):
-    name = models.CharField(max_length=200)
-    
-    def __str__(self):
-        return self.name
     
 class AttributeValue(models.Model):
     attribute = models.ForeignKey(Attribute, on_delete=models.CASCADE)

@@ -19,7 +19,11 @@ from .serializers import (
     OrderStatusHistorySerializer,
     ReturnRequestSerializer,
     ReturnRequestCreateSerializer,
-    ReturnRequestReviewSerializer
+    ReturnRequestReviewSerializer,
+    WalletSerializer,
+    TransactionSerializer,
+    WalletTopUpSerializer,
+    WalletTransferSerializer
 )
 from django.db import models
 from .reports import SalesReportGenerator
@@ -792,3 +796,209 @@ def product_performance(request, product_id):
     
     data = SalesReportGenerator.get_product_performance_metrics(product_id, start_date, end_date)
     return Response(data) 
+
+class WalletViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user wallets and transactions
+    """
+    serializer_class = WalletSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Wallet.objects.filter(user=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Get the user's wallet or create if it doesn't exist
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletSerializer(wallet)
+        return Response(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Get wallet details
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletSerializer(wallet)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def topup(self, request):
+        """
+        Top up wallet balance
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletTopUpSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            amount = serializer.validated_data['amount']
+            description = serializer.validated_data.get('description', 'Wallet top-up')
+            
+            with transaction.atomic():
+                # Update wallet balance
+                wallet.balance += amount
+                wallet.save()
+                
+                # Create transaction record
+                Transaction.objects.create(
+                    wallet=wallet,
+                    T_type='topup',
+                    amount=amount,
+                    description=description
+                )
+            
+            return Response({
+                'detail': 'Wallet topped up successfully',
+                'new_balance': wallet.balance,
+                'amount_added': amount
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def transfer(self, request):
+        """
+        Transfer money to another user's wallet
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletTransferSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            amount = serializer.validated_data['amount']
+            recipient_username = serializer.validated_data['recipient_username']
+            description = serializer.validated_data.get('description', f'Transfer to {recipient_username}')
+            
+            # Check if sender has sufficient balance
+            if wallet.balance < amount:
+                return Response({
+                    'detail': 'Insufficient funds',
+                    'current_balance': wallet.balance,
+                    'requested_amount': amount
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Prevent self-transfer
+            if recipient_username == request.user.username:
+                return Response({
+                    'detail': 'Cannot transfer to yourself'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                from accounts.models import User
+                recipient_user = User.objects.get(username=recipient_username)
+                recipient_wallet, created = Wallet.objects.get_or_create(user=recipient_user)
+                
+                with transaction.atomic():
+                    # Deduct from sender
+                    wallet.balance -= amount
+                    wallet.save()
+                    
+                    # Add to recipient
+                    recipient_wallet.balance += amount
+                    recipient_wallet.save()
+                    
+                    # Create transaction records
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        T_type='purchase',  # Using purchase as debit transaction
+                        amount=amount,
+                        description=f'Transfer to {recipient_username}: {description}'
+                    )
+                    
+                    Transaction.objects.create(
+                        wallet=recipient_wallet,
+                        T_type='topup',  # Using topup as credit transaction
+                        amount=amount,
+                        description=f'Transfer from {request.user.username}: {description}'
+                    )
+                
+                return Response({
+                    'detail': 'Transfer completed successfully',
+                    'amount_transferred': amount,
+                    'recipient': recipient_username,
+                    'new_balance': wallet.balance
+                }, status=status.HTTP_200_OK)
+                
+            except User.DoesNotExist:
+                return Response({
+                    'detail': 'Recipient user not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def transactions(self, request):
+        """
+        Get wallet transaction history
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        
+        # Filter parameters
+        transaction_type = request.query_params.get('type', None)
+        start_date = request.query_params.get('start_date', None)
+        end_date = request.query_params.get('end_date', None)
+        
+        # Build queryset
+        queryset = wallet.transactions.all().order_by('-timestamp')
+        
+        if transaction_type:
+            queryset = queryset.filter(T_type=transaction_type)
+        
+        if start_date:
+            queryset = queryset.filter(timestamp__date__gte=start_date)
+        
+        if end_date:
+            queryset = queryset.filter(timestamp__date__lte=end_date)
+        
+        # Paginate results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = TransactionSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = TransactionSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def balance(self, request):
+        """
+        Get current wallet balance
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        return Response({
+            'balance': wallet.balance,
+            'user': request.user.username
+        })
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """
+        Get wallet statistics
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        
+        # Calculate statistics
+        total_topups = wallet.transactions.filter(T_type='topup').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        total_purchases = wallet.transactions.filter(T_type='purchase').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        total_refunds = wallet.transactions.filter(T_type='refund').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        recent_transactions_count = wallet.transactions.filter(
+            timestamp__gte=timezone.now() - timezone.timedelta(days=30)
+        ).count()
+        
+        return Response({
+            'current_balance': wallet.balance,
+            'total_topups': total_topups,
+            'total_purchases': total_purchases,
+            'total_refunds': total_refunds,
+            'recent_transactions_30_days': recent_transactions_count,
+            'total_transactions': wallet.transactions.count()
+        })

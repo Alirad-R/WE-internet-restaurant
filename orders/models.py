@@ -59,7 +59,7 @@ class Order(models.Model):
     }
 
     # Core fields
-    # customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
+    customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
     order_number = models.CharField(max_length=50, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -253,8 +253,8 @@ class OrderItem(models.Model):
     """
     Model for storing order item information
     """
-    # order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    # product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     notes = models.TextField(null=True, blank=True)
@@ -303,12 +303,12 @@ class CartItem(models.Model):
     """
     CartItem model for individual items in a cart
     """
-    # cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    # product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     
-    # class Meta:
-        # unique_together = ('cart', 'product')
+    class Meta:
+        unique_together = ('cart', 'product')
     
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
@@ -318,17 +318,16 @@ class CartItem(models.Model):
         """
         Calculate the subtotal for this cart item
         """
-        return self.quantity  # fallback: just quantity if product missing
-    pass
+        return self.quantity * self.product.price
 
 class OrderStatusHistory(models.Model):
     """
     Model to track order status changes
     """
-    # order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
     old_status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES)
     new_status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES)
-    # changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     changed_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(null=True, blank=True)
 
@@ -369,8 +368,8 @@ class ReturnRequest(models.Model):
     ]
 
     # Core fields
-    # order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='return_requests')
-    # customer = models.ForeignKey(User, on_delete=models.PROTECT)
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='return_requests')
+    customer = models.ForeignKey(User, on_delete=models.PROTECT)
     return_type = models.CharField(max_length=20, choices=RETURN_TYPE_CHOICES)
     reason = models.CharField(max_length=20, choices=REASON_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -384,12 +383,12 @@ class ReturnRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
-    # reviewed_by = models.ForeignKey(
-    #     User, 
-    #     on_delete=models.SET_NULL, 
-    #     null=True, 
-    #     related_name='reviewed_returns'
-    # )
+    reviewed_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='reviewed_returns'
+    )
     
     # Review details
     admin_notes = models.TextField(null=True, blank=True)
@@ -465,6 +464,28 @@ class ReturnRequest(models.Model):
         if self.status != 'approved' and self.status != 'processing':
             raise ValueError("Cannot complete refund for non-approved request")
 
+        if not self.refund_amount:
+            raise ValueError("Refund amount must be set before completing refund")
+
+        # Handle financial refund
+        from .models import Wallet, Transaction
+        
+        # Get or create customer's wallet
+        wallet, created = Wallet.objects.get_or_create(user=self.customer)
+        
+        # Add refund amount to wallet balance
+        wallet.balance += self.refund_amount
+        wallet.save()
+        
+        # Create refund transaction record
+        Transaction.objects.create(
+            wallet=wallet,
+            T_type='refund',
+            amount=self.refund_amount,
+            description=f'Refund for Return Request #{self.id} - Order #{self.order.order_number}'
+        )
+
+        # Update return request status
         self.status = 'completed'
         self.save()
 
@@ -478,8 +499,8 @@ class ReturnItem(models.Model):
     """
     Model for individual items in a return request
     """
-    # return_request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name='items')
-    # order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
+    return_request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name='items')
+    order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     reason = models.CharField(max_length=20, choices=ReturnRequest.REASON_CHOICES)
     description = models.TextField(null=True, blank=True)
@@ -504,7 +525,7 @@ class ReturnItem(models.Model):
     
 class Wallet(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wallet')
-    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    balance = models.DecimalField(max_digits=20, decimal_places=0, default=0)
     
     def __str__(self):
         return f"Wallet for {self.user.username}"
@@ -516,12 +537,12 @@ class Transaction(models.Model):
         ('purchase', 'Purchase'),
     ]
     
-    # user = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
     T_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True, null=True)
     
     def __str__(self):
-        return f"{self.T_type} transaction for {self.user.user.username}"
+        return f"{self.T_type} transaction for {self.wallet.user.username}"
     
