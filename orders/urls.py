@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    OrderViewSet, ReturnRequestViewSet,
+    OrderViewSet, CartViewSet, WalletViewSet, ReturnRequestViewSet,
     sales_by_product, sales_by_date, best_sellers,
     worst_sellers, low_stock_alerts, sales_summary,
     product_performance
@@ -9,6 +9,8 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r'orders', OrderViewSet, basename='order')
+router.register(r'cart', CartViewSet, basename='cart')
+router.register(r'wallet', WalletViewSet, basename='wallet')
 router.register(r'returns', ReturnRequestViewSet, basename='return-request')
 
 urlpatterns = [

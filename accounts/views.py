@@ -79,13 +79,13 @@ class CustomerProfileViewSet(viewsets.ModelViewSet):
             return CustomerProfileUpdateSerializer
         return CustomerProfileSerializer
     
-    def list(self, request):
-        # Return only the user's own profile
-        profile = self.get_queryset().first()
-        if profile:
-            serializer = self.get_serializer(profile)
-            return Response(serializer.data)
-        return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+    # def list(self, request):
+    #     # Return only the user's own profile
+    #     profile = self.get_queryset().first()
+    #     if profile:
+    #         serializer = self.get_serializer(profile)
+    #         return Response(serializer.data)
+    #     return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=False, methods=['get'])
     def me(self, request):

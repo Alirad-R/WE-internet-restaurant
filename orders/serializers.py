@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, Cart, CartItem, OrderStatusHistory, ReturnItem, ReturnRequest
+from .models import Order, OrderItem, Cart, CartItem, OrderStatusHistory, ReturnItem, ReturnRequest, Wallet, Transaction
 from products.serializers import ProductSerializer
 from accounts.serializers import UserSerializer
 from coupons.serializers import CouponSerializer
@@ -323,3 +323,52 @@ class ReturnRequestReviewSerializer(serializers.ModelSerializer):
                 "This return request cannot be reviewed"
             )
         return data 
+
+class WalletSerializer(serializers.ModelSerializer):
+    user_details = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Wallet
+        fields = ('id', 'balance', 'user_details')
+        read_only_fields = ('id', 'user_details')
+    
+    def get_user_details(self, obj):
+        return {
+            'username': obj.user.username,
+            'email': obj.user.email
+        }
+
+class TransactionSerializer(serializers.ModelSerializer):
+    T_type_display = serializers.CharField(source='get_T_type_display', read_only=True)
+    
+    class Meta:
+        model = Transaction  
+        fields = ('id', 'T_type', 'T_type_display', 'amount', 'timestamp', 'description')
+        read_only_fields = ('id', 'timestamp')
+
+class WalletTopUpSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=1)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than 0")
+        return value
+
+class WalletTransferSerializer(serializers.Serializer):
+    recipient_username = serializers.CharField(max_length=150)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=1)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than 0")
+        return value
+    
+    def validate_recipient_username(self, value):
+        from accounts.models import User
+        try:
+            User.objects.get(username=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User with this username does not exist")
+        return value
