@@ -43,7 +43,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        fields = ['id', 'image']
+        fields = ['id', 'product', 'image']
 
         
 class ProductSerializer(serializers.ModelSerializer):
@@ -57,7 +57,18 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'price', 'category', 'category_id', 'tags', 'tag_ids', 'attribute_values', 'images']
+        fields = ['id', 'name', 'description', 'price', 'category', 'category_id', 'image', 'tags', 'tag_ids', 'attribute_values', 'images', 'is_available', 'is_featured']
+
+    def validate_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Price must be greater than 0")
+        return value
+
+    def validate(self, data):
+        # Custom cross-field validation
+        if data.get('is_featured') and not data.get('is_available'):
+            raise serializers.ValidationError("Featured products must be available")
+        return data
 
     def create(self, validated_data):
         tags = validated_data.pop('tag_ids', [])

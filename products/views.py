@@ -15,6 +15,13 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
     filter_fields = ['name', 'category', 'tags', 'price']
+    # filterset_fields = {
+    #     'price': ['gte', 'lte'],
+    #     'category': ['exact'],
+    #     'tags': ['exact'],
+    # }
+    # search_fields = ['name', 'description']
+    # ordering_fields = ['price', 'created_at']
     
     @action(detail=False, methods=['get'])
     def featured(self, request):

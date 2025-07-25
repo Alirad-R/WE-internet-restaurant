@@ -19,7 +19,11 @@ from .serializers import (
     OrderStatusHistorySerializer,
     ReturnRequestSerializer,
     ReturnRequestCreateSerializer,
-    ReturnRequestReviewSerializer
+    ReturnRequestReviewSerializer,
+    WalletSerializer,
+    TransactionSerializer,
+    WalletTopUpSerializer,
+    WalletTransferSerializer
 )
 from django.db import models
 from .reports import SalesReportGenerator
@@ -64,81 +68,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         return queryset.order_by(order_by)
     
     #To pay
-    @action(detail=True, methods=['post'], url_path='pay') #This lets us call POST /api/orders/12/pay/
-    def pay(self, request, pk=None):
-        order = self.get_object()
-        try:
-            order.pay()
-            return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
-        except ValueError as e:
-            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-    #To confirm payment
-    @action(detail=True, methods=['post'], url_path='confirm_payment') #/api/orders/5/confirm-payment/
-    def confirm_payment(self, request, pk=None):
-        order = self.get_object()
-        try:
-            order.pay()
-            return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
-        except ValueError as e:
-            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-    #To reject payment
-    @action(detail=True, methods=['post'], url_path='reject_payment') #/api/orders/5/reject-payment/
-    def reject_payment(self, request, pk=None):
-        order = self.get_object()
-        if order.payment_status != 'pending':
-            return Response({'error': 'only pending orders can be rejected'}, status=status.HTTP_400_BAD_REQUEST)
-        order.payment_status = 'rejected'
-        order.save()
-        return Response({'detail': 'Order rejected successfully'}, status=status.HTTP_200_OK)
-    
-    @action(detail=False, methods=['get'], url_path='sales_report')
-    def sales_report(self, request):
-        
-        #optional filters
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-        group_by = request.query_params.get('group_by', 'day')
-        
-        queryset = Order.objects.filter(payment_status='paid')
-        
-        #apply date filters
-        if start_date:
-            queryset = queryset.filter(order_date__date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(order_date__date__lte=end_date)
-            
-        #grouping
-        if group_by == 'month':
-            date_trunc = TruncMonth('order_date')
-        elif group_by == 'year':
-            date_trunc = TruncYear('order_date')
-        else:
-            date_trunc = TruncDate('order_date')
-            
-        report = (
-            queryset
-            .annotate(period=date_trunc)
-            .values('period')
-            .annotate(
-                total=Sum('total_amount'),
-                order_count=Count('id'),
-            )
-        )
-        
-        return Response(report)
-        
-    
-    #To pay
-    @action(detail=True, methods=['post'], url_path='pay') #This lets us call POST /api/orders/12/pay/
-    def pay(self, request, pk=None):
-        order = self.get_object()
-        try:
-            order.pay()
-            return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
-        except ValueError as e:
-            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    # @action(detail=True, methods=['post'], url_path='pay') #This lets us call POST /api/orders/12/pay/
+    # def pay(self, request, pk=None):
+    #     order = self.get_object()
+    #     try:
+    #         order.pay()
+    #         return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
+    #     except ValueError as e:
+    #         return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
     #To confirm payment
     @action(detail=True, methods=['post'], url_path='confirm_payment') #/api/orders/5/confirm-payment/
@@ -247,7 +184,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def refund(self, request, pk=None):
         """
-        Refund an order
+        Refund an order - uses centralized refund processing
         """
         order = self.get_object()
         
@@ -258,13 +195,33 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         
         reason = request.data.get('reason', '')
-        order.status = 'refunded'
-        order.payment_status = 'refunded'
-        order.refund_reason = reason
-        order.save()
+        refund_amount = request.data.get('refund_amount')
+        
+        # If no refund amount specified, refund the full order total
+        if not refund_amount:
+            refund_amount = order.total_after_discount if hasattr(order, 'total_after_discount') else order.total
+        
+        try:
+            with transaction.atomic():
+                # Use centralized refund processing
+                actual_refund_amount = order.process_refund(
+                    refund_amount=refund_amount,
+                    reason=reason,
+                    refund_source="Direct order refund"
+                )
+                
+        except Exception as e:
+            return Response(
+                {"error": f"Refund processing failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
         serializer = OrderSerializer(order)
-        return Response(serializer.data)
+        return Response({
+            'detail': 'Order refunded successfully',
+            'refund_amount': actual_refund_amount,
+            'order': serializer.data
+        })
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -792,3 +749,209 @@ def product_performance(request, product_id):
     
     data = SalesReportGenerator.get_product_performance_metrics(product_id, start_date, end_date)
     return Response(data) 
+
+class WalletViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user wallets and transactions
+    """
+    serializer_class = WalletSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Wallet.objects.filter(user=self.request.user)
+    
+    # def list(self, request, *args, **kwargs):
+    #     """
+    #     Get the user's wallet or create if it doesn't exist
+    #     """
+    #     wallet, created = Wallet.objects.get_or_create(user=request.user)
+    #     serializer = WalletSerializer(wallet)
+    #     return Response(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Get wallet details
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletSerializer(wallet)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def topup(self, request):
+        """
+        Top up wallet balance
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletTopUpSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            amount = serializer.validated_data['amount']
+            description = serializer.validated_data.get('description', 'Wallet top-up')
+            
+            with transaction.atomic():
+                # Update wallet balance
+                wallet.balance += amount
+                wallet.save()
+                
+                # Create transaction record
+                Transaction.objects.create(
+                    wallet=wallet,
+                    T_type='topup',
+                    amount=amount,
+                    description=description
+                )
+            
+            return Response({
+                'detail': 'Wallet topped up successfully',
+                'new_balance': wallet.balance,
+                'amount_added': amount
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def transfer(self, request):
+        """
+        Transfer money to another user's wallet
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletTransferSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            amount = serializer.validated_data['amount']
+            recipient_username = serializer.validated_data['recipient_username']
+            description = serializer.validated_data.get('description', f'Transfer to {recipient_username}')
+            
+            # Check if sender has sufficient balance
+            if wallet.balance < amount:
+                return Response({
+                    'detail': 'Insufficient funds',
+                    'current_balance': wallet.balance,
+                    'requested_amount': amount
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Prevent self-transfer
+            if recipient_username == request.user.username:
+                return Response({
+                    'detail': 'Cannot transfer to yourself'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                from accounts.models import User
+                recipient_user = User.objects.get(username=recipient_username)
+                recipient_wallet, created = Wallet.objects.get_or_create(user=recipient_user)
+                
+                with transaction.atomic():
+                    # Deduct from sender
+                    wallet.balance -= amount
+                    wallet.save()
+                    
+                    # Add to recipient
+                    recipient_wallet.balance += amount
+                    recipient_wallet.save()
+                    
+                    # Create transaction records
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        T_type='purchase',  # Using purchase as debit transaction
+                        amount=amount,
+                        description=f'Transfer to {recipient_username}: {description}'
+                    )
+                    
+                    Transaction.objects.create(
+                        wallet=recipient_wallet,
+                        T_type='topup',  # Using topup as credit transaction
+                        amount=amount,
+                        description=f'Transfer from {request.user.username}: {description}'
+                    )
+                
+                return Response({
+                    'detail': 'Transfer completed successfully',
+                    'amount_transferred': amount,
+                    'recipient': recipient_username,
+                    'new_balance': wallet.balance
+                }, status=status.HTTP_200_OK)
+                
+            except User.DoesNotExist:
+                return Response({
+                    'detail': 'Recipient user not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def transactions(self, request):
+        """
+        Get wallet transaction history
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        
+        # Filter parameters
+        transaction_type = request.query_params.get('type', None)
+        start_date = request.query_params.get('start_date', None)
+        end_date = request.query_params.get('end_date', None)
+        
+        # Build queryset
+        queryset = wallet.transactions.all().order_by('-timestamp')
+        
+        if transaction_type:
+            queryset = queryset.filter(T_type=transaction_type)
+        
+        if start_date:
+            queryset = queryset.filter(timestamp__date__gte=start_date)
+        
+        if end_date:
+            queryset = queryset.filter(timestamp__date__lte=end_date)
+        
+        # Paginate results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = TransactionSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = TransactionSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def balance(self, request):
+        """
+        Get current wallet balance
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        return Response({
+            'balance': wallet.balance,
+            'user': request.user.username
+        })
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """
+        Get wallet statistics
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        
+        # Calculate statistics
+        total_topups = wallet.transactions.filter(T_type='topup').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        total_purchases = wallet.transactions.filter(T_type='purchase').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        total_refunds = wallet.transactions.filter(T_type='refund').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        recent_transactions_count = wallet.transactions.filter(
+            timestamp__gte=timezone.now() - timezone.timedelta(days=30)
+        ).count()
+        
+        return Response({
+            'current_balance': wallet.balance,
+            'total_topups': total_topups,
+            'total_purchases': total_purchases,
+            'total_refunds': total_refunds,
+            'recent_transactions_30_days': recent_transactions_count,
+            'total_transactions': wallet.transactions.count()
+        })
