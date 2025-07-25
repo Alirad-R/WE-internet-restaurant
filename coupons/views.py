@@ -21,6 +21,19 @@ class CouponViewSet(viewsets.ModelViewSet):
     serializer_class = CouponSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # Only staff can create, update, or delete coupons
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            # Regular authenticated users can view and validate coupons
+            permission_classes = [permissions.IsAuthenticated]
+        
+        return [permission() for permission in permission_classes]
+
     def get_serializer_class(self):
         if self.action == 'create':
             return CouponCreateSerializer
