@@ -353,8 +353,6 @@ class WalletTopUpSerializer(serializers.Serializer):
     def validate_amount(self, value):
         if value <= 0:
             raise serializers.ValidationError("Amount must be greater than 0")
-        if value > 10000:  # Maximum top-up limit
-            raise serializers.ValidationError("Maximum top-up amount is 10,000")
         return value
 
 class WalletTransferSerializer(serializers.Serializer):

@@ -105,10 +105,10 @@ class Order(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            # models.Index(fields=['-created_at']),
-            # models.Index(fields=['order_number']),
-            # models.Index(fields=['status']),
-            # models.Index(fields=['customer']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['order_number']),
+            models.Index(fields=['status']),
+            models.Index(fields=['customer']),
         ]
 
     def __str__(self):
@@ -232,22 +232,57 @@ class Order(models.Model):
         from .models import Wallet, Transaction
         
         wallet, _ = Wallet.objects.get_or_create(user=self.customer)
-        if wallet.balance < self.total_amount:
+        # Use total_after_discount if coupon applied, otherwise use total
+        payment_amount = self.total_after_discount if self.coupon else self.total
+        
+        if wallet.balance < payment_amount:
             raise ValueError('Insufficient funds')
-        wallet.balance -= self.total_amount
+        wallet.balance -= payment_amount
         wallet.save()
         
         Transaction.objects.create(
             wallet=wallet,
             T_type='purchase',
-            amount=self.total_amount,
-            description=f'Order #{self.id}'
+            amount=payment_amount,
+            description=f'Order #{self.order_number}'
         )
         
         self.payment_status = 'paid'
         self.save()
         
+    def process_refund(self, refund_amount, reason, refund_source="Direct refund"):
+        """
+        Centralized refund processing method
+        Handles wallet operations and order status updates
+        """
+        from .models import Wallet, Transaction
         
+        if refund_amount <= 0:
+            raise ValueError("Refund amount must be positive")
+            
+        # Get or create customer's wallet
+        wallet, created = Wallet.objects.get_or_create(user=self.customer)
+        
+        # Add refund amount to wallet balance
+        wallet.balance += refund_amount
+        wallet.save()
+        
+        # Create refund transaction record
+        Transaction.objects.create(
+            wallet=wallet,
+            T_type='refund',
+            amount=refund_amount,
+            description=f'{refund_source} for Order #{self.order_number}: {reason}'
+        )
+        
+        # Update order status
+        self.status = 'refunded'
+        self.payment_status = 'refunded'
+        self.refund_reason = reason
+        self.save()
+        
+        return refund_amount
+
 
 class OrderItem(models.Model):
     """
@@ -262,7 +297,7 @@ class OrderItem(models.Model):
     class Meta:
         ordering = ['id']
         indexes = [
-            # models.Index(fields=['order', 'product']),
+            models.Index(fields=['order', 'product']),
         ]
 
     def __str__(self):
@@ -459,7 +494,7 @@ class ReturnRequest(models.Model):
 
     def complete_refund(self):
         """
-        Complete the refund process
+        Complete the refund process - uses centralized Order.process_refund()
         """
         if self.status != 'approved' and self.status != 'processing':
             raise ValueError("Cannot complete refund for non-approved request")
@@ -467,33 +502,16 @@ class ReturnRequest(models.Model):
         if not self.refund_amount:
             raise ValueError("Refund amount must be set before completing refund")
 
-        # Handle financial refund
-        from .models import Wallet, Transaction
-        
-        # Get or create customer's wallet
-        wallet, created = Wallet.objects.get_or_create(user=self.customer)
-        
-        # Add refund amount to wallet balance
-        wallet.balance += self.refund_amount
-        wallet.save()
-        
-        # Create refund transaction record
-        Transaction.objects.create(
-            wallet=wallet,
-            T_type='refund',
-            amount=self.refund_amount,
-            description=f'Refund for Return Request #{self.id} - Order #{self.order.order_number}'
+        # Use centralized refund processing
+        self.order.process_refund(
+            refund_amount=self.refund_amount,
+            reason=f"Return Request #{self.id}",
+            refund_source="Return request"
         )
 
         # Update return request status
         self.status = 'completed'
         self.save()
-
-        # Update order status
-        self.order.status = 'refunded'
-        self.order.payment_status = 'refunded'
-        self.order.refund_reason = f"Return Request #{self.id}"
-        self.order.save()
 
 class ReturnItem(models.Model):
     """
