@@ -59,7 +59,7 @@ class Order(models.Model):
     }
 
     # Core fields
-    # customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
+    customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
     order_number = models.CharField(max_length=50, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -108,7 +108,7 @@ class Order(models.Model):
             # models.Index(fields=['-created_at']),
             # models.Index(fields=['order_number']),
             # models.Index(fields=['status']),
-            # models.Index(fields=['customer']),
+            models.Index(fields=['customer']),
         ]
 
     def __str__(self):
@@ -253,8 +253,8 @@ class OrderItem(models.Model):
     """
     Model for storing order item information
     """
-    # order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    # product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     notes = models.TextField(null=True, blank=True)
