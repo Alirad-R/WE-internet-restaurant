@@ -68,11 +68,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         return queryset.order_by(order_by)
     
     #To pay
-    # @action(detail=True, methods=['post'], url_path='pay') #This lets us call POST /api/orders/12/pay/
-    # def pay(self, request, pk=None):
-    #     order = self.get_object()
-    #     try:
-    #         order.pay()
+    @action(detail=True, methods=['post'], url_path='pay') #This lets us call POST /api/orders/12/pay/
+    def pay(self, request, pk=None):
+        order = self.get_object()
+        try:
+            order.pay()
+            return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
     #         return Response({'detail': 'Order paid successfully'}, status=status.HTTP_200_OK)
     #     except ValueError as e:
     #         return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -195,33 +199,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         
         reason = request.data.get('reason', '')
-        refund_amount = request.data.get('refund_amount')
-        
-        # If no refund amount specified, refund the full order total
-        if not refund_amount:
-            refund_amount = order.total_after_discount if hasattr(order, 'total_after_discount') else order.total
-        
-        try:
-            with transaction.atomic():
-                # Use centralized refund processing
-                actual_refund_amount = order.process_refund(
-                    refund_amount=refund_amount,
-                    reason=reason,
-                    refund_source="Direct order refund"
-                )
-                
-        except Exception as e:
-            return Response(
-                {"error": f"Refund processing failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        order.status = 'refunded'
+        order.payment_status = 'refunded'
+        order.refund_reason = reason
+        order.save()
         
         serializer = OrderSerializer(order)
-        return Response({
-            'detail': 'Order refunded successfully',
-            'refund_amount': actual_refund_amount,
-            'order': serializer.data
-        })
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -717,6 +701,48 @@ def low_stock_alerts(request):
     return Response(list(data))
 
 @api_view(['GET'])
+def test_sales_summary(request):
+    """
+    Test endpoint for sales summary without authentication
+    """
+    from datetime import datetime, timedelta
+    now = timezone.now()
+    
+    # Get all orders (not just delivered)
+    from .reports import SalesReportGenerator
+    
+    # Daily sales (today)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+    daily_sales = SalesReportGenerator.get_sales_summary(today_start, today_end)
+    
+    # Monthly sales (current month)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if now.month == 12:
+        next_month = now.replace(year=now.year + 1, month=1, day=1)
+    else:
+        next_month = now.replace(month=now.month + 1, day=1)
+    month_end = next_month
+    monthly_sales = SalesReportGenerator.get_sales_summary(month_start, month_end)
+    
+    # Yearly sales (current year)
+    year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    year_end = year_start.replace(year=year_start.year + 1)
+    yearly_sales = SalesReportGenerator.get_sales_summary(year_start, year_end)
+    
+    # Total revenue
+    total_sales = SalesReportGenerator.get_sales_summary()
+    
+    data = {
+        'total_revenue': total_sales.get('total_revenue', 0),
+        'daily_sales': daily_sales.get('total_revenue', 0),
+        'monthly_sales': monthly_sales.get('total_revenue', 0),
+        'yearly_sales': yearly_sales.get('total_revenue', 0),
+    }
+    
+    return Response(data)
+
+@api_view(['GET'])
 @permission_classes([IsAdminUser])
 def sales_summary(request):
     """
@@ -731,6 +757,33 @@ def sales_summary(request):
         end_date = parse_date(end_date)
     
     data = SalesReportGenerator.get_sales_summary(start_date, end_date)
+    
+    # Add daily, monthly, yearly sales
+    from datetime import datetime, timedelta
+    now = timezone.now()
+    
+    # Daily sales (today)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+    daily_sales = SalesReportGenerator.get_sales_summary(today_start, today_end)
+    data['daily_sales'] = daily_sales.get('total_revenue', 0)
+    
+    # Monthly sales (current month)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if now.month == 12:
+        next_month = now.replace(year=now.year + 1, month=1, day=1)
+    else:
+        next_month = now.replace(month=now.month + 1, day=1)
+    month_end = next_month
+    monthly_sales = SalesReportGenerator.get_sales_summary(month_start, month_end)
+    data['monthly_sales'] = monthly_sales.get('total_revenue', 0)
+    
+    # Yearly sales (current year)
+    year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    year_end = year_start.replace(year=year_start.year + 1)
+    yearly_sales = SalesReportGenerator.get_sales_summary(year_start, year_end)
+    data['yearly_sales'] = yearly_sales.get('total_revenue', 0)
+    
     return Response(data)
 
 @api_view(['GET'])
@@ -750,6 +803,87 @@ def product_performance(request, product_id):
     data = SalesReportGenerator.get_product_performance_metrics(product_id, start_date, end_date)
     return Response(data) 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_transactions(request):
+    """
+    Get all transactions for admin (all users)
+    """
+    from .models import Transaction
+    
+    # Filter parameters
+    transaction_type = request.query_params.get('type', None)
+    start_date = request.query_params.get('start_date', None)
+    end_date = request.query_params.get('end_date', None)
+    
+    # Build queryset
+    queryset = Transaction.objects.select_related('wallet__user').order_by('-timestamp')
+    
+    if transaction_type:
+        queryset = queryset.filter(T_type=transaction_type)
+    
+    if start_date:
+        queryset = queryset.filter(timestamp__date__gte=start_date)
+    
+    if end_date:
+        queryset = queryset.filter(timestamp__date__lte=end_date)
+    
+    # Serialize with user info
+    transactions = []
+    for txn in queryset:
+        transactions.append({
+            'id': txn.id,
+            'T_type': txn.T_type,
+            'T_type_display': txn.get_T_type_display(),
+            'amount': txn.amount,
+            'timestamp': txn.timestamp,
+            'description': txn.description,
+            'user_username': txn.wallet.user.username,
+            'user_email': txn.wallet.user.email,
+        })
+    
+    return Response(transactions)
+
+@api_view(['GET'])
+def test_admin_transactions(request):
+    """
+    Test endpoint for admin transactions without authentication
+    """
+    from .models import Transaction
+    
+    # Filter parameters
+    transaction_type = request.query_params.get('type', None)
+    start_date = request.query_params.get('start_date', None)
+    end_date = request.query_params.get('end_date', None)
+    
+    # Build queryset
+    queryset = Transaction.objects.select_related('wallet__user').order_by('-timestamp')
+    
+    if transaction_type:
+        queryset = queryset.filter(T_type=transaction_type)
+    
+    if start_date:
+        queryset = queryset.filter(timestamp__date__gte=start_date)
+    
+    if end_date:
+        queryset = queryset.filter(timestamp__date__lte=end_date)
+    
+    # Serialize with user info
+    transactions = []
+    for txn in queryset:
+        transactions.append({
+            'id': txn.id,
+            'T_type': txn.T_type,
+            'T_type_display': txn.get_T_type_display(),
+            'amount': txn.amount,
+            'timestamp': txn.timestamp,
+            'description': txn.description,
+            'user_username': txn.wallet.user.username,
+            'user_email': txn.wallet.user.email,
+        })
+    
+    return Response(transactions)
+
 class WalletViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing user wallets and transactions
@@ -760,13 +894,13 @@ class WalletViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Wallet.objects.filter(user=self.request.user)
     
-    # def list(self, request, *args, **kwargs):
-    #     """
-    #     Get the user's wallet or create if it doesn't exist
-    #     """
-    #     wallet, created = Wallet.objects.get_or_create(user=request.user)
-    #     serializer = WalletSerializer(wallet)
-    #     return Response(serializer.data)
+    def list(self, request, *args, **kwargs):
+        """
+        Get the user's wallet or create if it doesn't exist
+        """
+        wallet, created = Wallet.objects.get_or_create(user=request.user)
+        serializer = WalletSerializer(wallet)
+        return Response(serializer.data)
     
     def retrieve(self, request, *args, **kwargs):
         """
@@ -955,3 +1089,67 @@ class WalletViewSet(viewsets.ModelViewSet):
             'recent_transactions_30_days': recent_transactions_count,
             'total_transactions': wallet.transactions.count()
         })
+
+@api_view(['POST'])
+def create_test_order(request):
+    """
+    Create a test order for testing purposes
+    """
+    from django.contrib.auth.models import User
+    from products.models import Product
+    
+    try:
+        # Get or create test user
+        user, created = User.objects.get_or_create(
+            username='testuser',
+            defaults={
+                'email': 'test@example.com',
+                'is_staff': True,
+                'is_superuser': True
+            }
+        )
+        
+        # Get or create test product
+        product, created = Product.objects.get_or_create(
+            name='Test Product',
+            defaults={
+                'price': 50000,
+                'description': 'Test product for financial testing',
+                'stock': 100,
+                'is_active': True
+            }
+        )
+        
+        # Create test order
+        order = Order.objects.create(
+            customer=user,
+            order_number='TEST001',
+            status='delivered',
+            payment_status='paid',
+            subtotal=50000,
+            tax=5000,
+            delivery_fee=10000,
+            total=65000,
+            delivery_address='Test Address',
+        )
+        
+        # Create order item
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            quantity=1,
+            unit_price=50000,
+        )
+        
+        return Response({
+            'message': 'Test order created successfully',
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'total': order.total
+        })        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=400)
+
+

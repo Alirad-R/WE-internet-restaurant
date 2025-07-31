@@ -310,7 +310,7 @@ class Coupon(models.Model):
             elif self.customer_tier == CustomerTier.REGULAR:
                 users = users.annotate(
                     order_count=Count('orders'),
-                    total_spent=Sum('orders__total')
+                    total_spent=Sum('orders__total_amount')
                 ).filter(
                     order_count__gte=3,
                     total_spent__gte=100
@@ -341,8 +341,8 @@ class Coupon(models.Model):
             # Basic status validation
             if not self.is_active:
                 return False
-            
-            if self.status != CouponStatus.ACTIVE:
+                
+            if self.status == CouponStatus.EXPIRED:
                 return False
             
             # Time-based validation

@@ -118,10 +118,44 @@ class Order(models.Model):
         """
         Calculate order total including items, tax, and delivery fee
         """
-        self.subtotal = sum(item.get_total() for item in self.items.all())
-        self.tax = self.subtotal * 0.1  # 10% tax rate
-        self.total = self.subtotal + self.tax + self.delivery_fee
-        return self.total
+        try:
+            from decimal import Decimal
+            
+            # Calculate subtotal from order items
+            items = self.items.all()
+            self.subtotal = sum(item.get_total() for item in items)
+            
+            # Calculate tax (10%) - convert to Decimal
+            self.tax = self.subtotal * Decimal('0.1')
+            
+            # Calculate total (subtotal + tax + delivery fee)
+            delivery_fee = getattr(self, 'delivery_fee', 0) or 0
+            if not isinstance(delivery_fee, Decimal):
+                delivery_fee = Decimal(str(delivery_fee))
+            
+            self.total = self.subtotal + self.tax + delivery_fee
+            
+            # Apply discount if exists
+            discount = self.discount_amount or 0
+            if not isinstance(discount, Decimal):
+                discount = Decimal(str(discount))
+            
+            # Ensure total doesn't go below 0
+            self.total = max(0, self.total - discount)
+            
+            return self.total
+        except Exception as e:
+            # Log error and set default values
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating total for order {self.order_number}: {str(e)}")
+            
+            # Set safe default values
+            from decimal import Decimal
+            self.subtotal = Decimal('0')
+            self.tax = Decimal('0')
+            self.total = Decimal('0')
+            return self.total
 
     def can_cancel(self):
         """
@@ -136,16 +170,12 @@ class Order(models.Model):
         return self.status == 'delivered' and self.payment_status == 'paid'
 
     def can_transition_to(self, new_status):
-        """
-        Check if the order can transition to the new status
-        """
-        return new_status in self.STATUS_TRANSITIONS.get(self.status, [])
+        # Allow any status transition
+        return True
 
     def get_valid_status_transitions(self):
-        """
-        Get list of valid status transitions from current status
-        """
-        return self.STATUS_TRANSITIONS.get(self.status, [])
+        # Allow all statuses as valid transitions
+        return [s[0] for s in self.STATUS_CHOICES if s[0] != self.status]
 
     def get_status_message(self):
         """
@@ -197,7 +227,8 @@ class Order(models.Model):
         """
         Calculate total after applying coupon discount
         """
-        return max(0, self.total - self.discount_amount)
+        discount = self.discount_amount or 0
+        return max(0, self.total - discount)
 
     def apply_coupon(self, coupon):
         """
@@ -233,56 +264,24 @@ class Order(models.Model):
         
         wallet, _ = Wallet.objects.get_or_create(user=self.customer)
         # Use total_after_discount if coupon applied, otherwise use total
-        payment_amount = self.total_after_discount if self.coupon else self.total
+        # payment_amount = self.total_after_discount if self.coupon else self.total
         
-        if wallet.balance < payment_amount:
+        if wallet.balance < self.total:
             raise ValueError('Insufficient funds')
-        wallet.balance -= payment_amount
+        wallet.balance -= self.total
         wallet.save()
         
         Transaction.objects.create(
             wallet=wallet,
             T_type='purchase',
-            amount=payment_amount,
-            description=f'Order #{self.order_number}'
+            amount=self.total,
+            description=f'Order #{self.order_number} - Total: {self.total} (Subtotal: {self.subtotal}, Tax: {self.tax}, Delivery: {self.delivery_fee})'
         )
         
         self.payment_status = 'paid'
         self.save()
         
-    def process_refund(self, refund_amount, reason, refund_source="Direct refund"):
-        """
-        Centralized refund processing method
-        Handles wallet operations and order status updates
-        """
-        from .models import Wallet, Transaction
         
-        if refund_amount <= 0:
-            raise ValueError("Refund amount must be positive")
-            
-        # Get or create customer's wallet
-        wallet, created = Wallet.objects.get_or_create(user=self.customer)
-        
-        # Add refund amount to wallet balance
-        wallet.balance += refund_amount
-        wallet.save()
-        
-        # Create refund transaction record
-        Transaction.objects.create(
-            wallet=wallet,
-            T_type='refund',
-            amount=refund_amount,
-            description=f'{refund_source} for Order #{self.order_number}: {reason}'
-        )
-        
-        # Update order status
-        self.status = 'refunded'
-        self.payment_status = 'refunded'
-        self.refund_reason = reason
-        self.save()
-        
-        return refund_amount
-
 
 class OrderItem(models.Model):
     """
@@ -502,16 +501,33 @@ class ReturnRequest(models.Model):
         if not self.refund_amount:
             raise ValueError("Refund amount must be set before completing refund")
 
-        # Use centralized refund processing
-        self.order.process_refund(
-            refund_amount=self.refund_amount,
-            reason=f"Return Request #{self.id}",
-            refund_source="Return request"
+        # Handle financial refund
+        from .models import Wallet, Transaction
+        
+        # Get or create customer's wallet
+        wallet, created = Wallet.objects.get_or_create(user=self.customer)
+        
+        # Add refund amount to wallet balance
+        wallet.balance += self.refund_amount
+        wallet.save()
+        
+        # Create refund transaction record
+        Transaction.objects.create(
+            wallet=wallet,
+            T_type='refund',
+            amount=self.refund_amount,
+            description=f'Refund for Return Request #{self.id} - Order #{self.order.order_number}'
         )
 
         # Update return request status
         self.status = 'completed'
         self.save()
+
+        # Update order status
+        self.order.status = 'refunded'
+        self.order.payment_status = 'refunded'
+        self.order.refund_reason = f"Return Request #{self.id}"
+        self.order.save()
 
 class ReturnItem(models.Model):
     """

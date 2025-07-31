@@ -40,7 +40,7 @@ class UserWithProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 
-                 'date_of_birth', 'location', 'customer_profile')
+                 'date_of_birth', 'location', 'customer_profile', 'is_staff', 'is_superuser')
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -48,7 +48,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location', 'is_staff', 'is_superuser')
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """
@@ -101,7 +101,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'image', 'date_of_birth', 'location', 'is_staff', 'is_superuser')
+        read_only_fields = ('is_staff', 'is_superuser')
         extra_kwargs = {
             'username': {'required': False},
         }
@@ -179,5 +180,5 @@ class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 
-                 'is_active', 'date_joined', 'last_login', 'customer_profile')
+                 'is_active', 'date_joined', 'last_login', 'customer_profile', 'is_staff', 'is_superuser')
         read_only_fields = ('id', 'date_joined', 'last_login')

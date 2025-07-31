@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import OrderingFilter
 from .models import Product, Category, Attribute, AttributeValue, Tag, ProductImage
 from .serializers import ProductSerializer, CategorySerializer, AttributeSerializer, AttributeValueSerializer, TagSerializer, ProductImageSerializer
 from django_filters.rest_framework import DjangoFilterBackend
@@ -13,7 +14,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()  # Fixed empty queryset
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filter_fields = ['name', 'category', 'tags', 'price']
     # filterset_fields = {
     #     'price': ['gte', 'lte'],
@@ -21,7 +22,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     #     'tags': ['exact'],
     # }
     # search_fields = ['name', 'description']
-    # ordering_fields = ['price', 'created_at']
+    ordering_fields = ['id', 'price', 'created_at', 'updated_at']
     
     @action(detail=False, methods=['get'])
     def featured(self, request):
@@ -29,6 +30,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         Return a list of featured products
         """
         featured = Product.objects.filter(is_featured=True, is_available=True)
+        
+        # Apply ordering if specified in query params
+        ordering = request.query_params.get('ordering', '-id')
+        if ordering:
+            featured = featured.order_by(ordering)
+        
         serializer = self.get_serializer(featured, many=True)
         return Response(serializer.data)
 

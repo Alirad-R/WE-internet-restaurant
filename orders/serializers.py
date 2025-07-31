@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Cart, CartItem, OrderStatusHistory, ReturnItem, ReturnRequest, Wallet, Transaction
 from products.serializers import ProductSerializer
-from accounts.serializers import UserSerializer
+from accounts.serializers import UserSerializer, UserWithProfileSerializer
 from coupons.serializers import CouponSerializer
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return value
 
     def validate_product(self, value):
-        if not value.is_active:
+        if not value.is_available:
             raise serializers.ValidationError("This product is no longer available")
         return value
 
@@ -31,7 +31,7 @@ class OrderSerializer(serializers.ModelSerializer):
     Serializer for Order model - used for list and retrieve operations
     """
     items = OrderItemSerializer(many=True, read_only=True)
-    customer_details = UserSerializer(source='customer', read_only=True)
+    customer_details = UserWithProfileSerializer(source='customer', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
     delivery_method_display = serializers.CharField(source='get_delivery_method_display', read_only=True)

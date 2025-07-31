@@ -28,6 +28,18 @@ class SalesReportGenerator:
             filters &= Q(order__created_at__lte=end_date)
         return filters
 
+    @staticmethod
+    def get_all_orders_filters(start_date=None, end_date=None):
+        """
+        Get date range filters for all orders (not just delivered)
+        """
+        filters = Q()  # No status filter - get all orders
+        if start_date:
+            filters &= Q(order__created_at__gte=start_date)
+        if end_date:
+            filters &= Q(order__created_at__lte=end_date)
+        return filters
+
     @classmethod
     def get_sales_by_product(cls, start_date=None, end_date=None):
         """
@@ -154,7 +166,7 @@ class SalesReportGenerator:
         """
         Get overall sales summary
         """
-        filters = cls.get_date_range_filters(start_date, end_date)
+        filters = cls.get_all_orders_filters(start_date, end_date)
         
         summary = OrderItem.objects.filter(filters).aggregate(
             total_revenue=Sum(
@@ -177,7 +189,7 @@ class SalesReportGenerator:
             previous_start = start_date - period_length
             previous_end = start_date
             
-            previous_filters = cls.get_date_range_filters(previous_start, previous_end)
+            previous_filters = cls.get_all_orders_filters(previous_start, previous_end)
             previous_revenue = OrderItem.objects.filter(previous_filters).aggregate(
                 total=Sum(
                     ExpressionWrapper(
